@@ -1,0 +1,102 @@
+--- commerce_qb_webconnect.qb.inc
++++ commerce_qb_webconnect.qb.inc
+@@ -30,8 +37,8 @@
+       'template_path' => $path,
+       'template_vars' => commerce_qb_webconnect_product_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_product_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_product_label',
+-      'label' => t('Add inventory product'),
++      'label_callback' => 'commerce_qb_webconnect_add_product_label',
++      'label' => t('Add inventory product'),
+       'uri_callback' => 'commerce_qb_webconnect_add_product_uri',
+       'weight' => -1,
+     ),
+@@ -41,7 +48,7 @@
+       'template_path' => $path,
+       'template_vars' => commerce_qb_webconnect_product_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_product_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_product_label',
++      'label_callback' => 'commerce_qb_webconnect_add_product_label',
+       'label' => t('Add non-inventory product'),
+       'uri_callback' => 'commerce_qb_webconnect_add_product_uri',
+       'weight' => -1,
+@@ -50,10 +57,10 @@
+       'callback' => 'commerce_qb_webconnect_add_order_variables',
+       'template' => 'add_invoice.qbxml',
+       'template_path' => $path,
+-      'template_vars' => commerce_qb_webconnect_order_vars(),
++      'template_vars' => commerce_qb_webconnect_order_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_invoice_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
+-      'label' => t('Add invoice'),
++      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
++      'label' => t('Add invoice'),
+       'uri_callback' => 'commerce_qb_webconnect_add_invoice_uri',
+       'weight' => 0, // @TODO it should be able to interpret this without specifying 0
+       'order_export' => TRUE
+@@ -62,10 +69,10 @@
+       'callback' => 'commerce_qb_webconnect_add_order_variables',
+       'template' => 'add_sales_receipt.qbxml',
+       'template_path' => $path,
+-      'template_vars' => commerce_qb_webconnect_order_vars(),
++      'template_vars' => commerce_qb_webconnect_order_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_sales_receipt_unique_id',
+       'label_callback' => 'commerce_qb_webconnect_add_invoice_label', // same as add invoice
+-      'label' => t('Add sales receipt'),
++      'label' => t('Add sales receipt'),
+       'uri_callback' => 'commerce_qb_webconnect_add_invoice_uri', // same as add invoice
+       'weight' => 0,
+       'order_export' => TRUE
+@@ -74,10 +81,10 @@
+       'callback' => 'commerce_qb_webconnect_add_payment_variables',
+       'template' => 'add_payment.qbxml',
+       'template_path' => $path,
+-      'template_vars' => commerce_qb_webconnect_payment_vars(),
++      'template_vars' => commerce_qb_webconnect_payment_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_payment_unique_id',
+       'label_callback' => 'commerce_qb_webconnect_add_payment_label',
+-      'label' => t('Add payment'),
++      'label' => t('Add payment'),
+       'weight' => 1,
+     )
+   );
+@@ -309,7 +358,7 @@
+   }
+ 
+   $variables['title'] = $data['title'];
+-  $variables['product_id'] = $data['product_id'];
++  $variables['product_id'] = $data['product_id'];
+ 
+   return $variables;
+ }
+@@ -346,7 +397,7 @@
+   $variables['tax_type'] = $tax_account;
+ 
+   // load products
+-  $products = commerce_qb_webconnect_line_item_products($order);
++  $products = commerce_qb_webconnect_line_item_products($order);
+ 
+   // allow modules to alter the list of products being exported with this order
+   drupal_alter('commerce_qb_webconnect_order_products', $products, $data);
+@@ -356,7 +407,7 @@
+     foreach ($products as $product) {
+       $price_lang = _commerce_qb_webconnect_get_lang($product->commerce_price);
+       $price_array = NULL;
+-      $price_array = $product->commerce_price[$price_lang][0];
++      $price_array = $product->commerce_price[$price_lang][0];
+       $price = commerce_currency_amount_to_decimal($price_array['amount'], $price_array['currency_code']);
+ 
+       $variables['products'][] = array(
+@@ -467,10 +523,10 @@
+         case 'add_sales_receipt':
+         case 'add_payment':
+           return variable_get('commerce_qb_webconnect_example_payment_method', '');
+-
++
+           break;
+       }
+-
+       break;
+   }
+ }
++

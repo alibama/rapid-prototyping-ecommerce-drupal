@@ -1,0 +1,901 @@
+From 48b71f410be5e03dd0d8574665ca72047bc3adb9 Mon Sep 17 00:00:00 2001
+From: Alex Knoll <alex@newmediadenver.com>
+Date: Fri, 31 Jan 2014 13:15:18 -0700
+Subject: [PATCH] Merging commerce qb webconnect
+
+---
+ README.txt                                         |  10 +-
+ commerce_qb_webconnect.api.php                     |  16 ++-
+ commerce_qb_webconnect.module                      | 124 +++++++++++++++++----
+ commerce_qb_webconnect.qb.inc                      | 120 ++++++++++++++------
+ ...commerce_qb_webconnect_qb_export.controller.inc |  38 ++++++-
+ qbxml/add_customer.qbxml.tpl.php                   |   8 ++
+ qbxml/add_inventory_product.qbxml.tpl.php          |   6 +-
+ qbxml/add_payment.qbxml.tpl.php                    |   4 +-
+ views/commerce_qb_webconnect.views_default.inc     | 101 +++--------------
+ ...ce_qb_webconnect_handler_field_export_label.inc |   7 +-
+ 10 files changed, 280 insertions(+), 154 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 10618a1..93ba587 100644
+--- a/README.txt
++++ b/README.txt
+@@ -7,16 +7,22 @@ site owners requiring support with this package.
+ This module requires the Services module and serves as a server plug-in to that module.
+ You do not need to enable the rest_server or xmlrpc_server components.
+
++This module requires Intuit's PHP DevKit for variable casting:
++https://code.intuit.com/sf/sfmain/do/viewProject/projects.php_devkit
++
++IMPORTANT: PHPDevkit be installed in a specific subfolder of Drupal's root folder:
++require_once DRUPAL_ROOT . '/quickbooks-php-devkit/QuickBooks.php';
++
+ Using the Manage Quickbooks Exports admin page will queue existing orders and products.
+ Customers are automatically queued for export with orders.
+ Existing payments will not be queued. (Feature request)
+
+-Going forward new orders/products/customers/payments will be queued on creation (insert) as part of
++Going forward new orders/products/customers/payments will be queued on creation (insert) as part of
+ Drupal Commerce API hooks.
+
+ Failed exports will be flagged and automatically re-exported upon next sync.
+ Authentication triggers all exports in ERROR status to be reset to PENDING
+-Watchdog (Reports -> Recent log messages) will capture errors and should be checked after each sync.
++Watchdog (Reports\Recent log messages) will capture errors and should be checked after each sync.
+
+ Error 3100 (Item already exists) will be treated as a successful export (Add Customer, Add product, etc.)
+ This module tracks successful exports to avoid duplication but Quickbooks itself does not prevent
+diff --git a/commerce_qb_webconnect.api.php b/commerce_qb_webconnect.api.php
+index b623694..d309d96 100644
+--- a/commerce_qb_webconnect.api.php
++++ b/commerce_qb_webconnect.api.php
+@@ -25,7 +25,7 @@ function hook_MODULE_NAME_commerce_qb_webconnect_payment_mapping($payment_type,
+         case 'add_sales_receipt':
+         case 'add_payment':
+           return variable_get('commerce_qb_webconnect_example_payment_method', '');
+-
++
+           break;
+       }
+
+@@ -146,6 +146,12 @@ function hook_commerce_qb_webconnect_sales_tax_account_alter(&$tax_account, $dat
+  *  - order_export: Flag to determine whether or not export type is meant to
+  *    represent an order. Necessary for certain parts of the configuration UI.
+  *    (boolean, optional)
++ *
++ *  - return_callback: After a successful call, return the quickbooks response
++ *    to callback.
++ *
++ *  - file: Include file relative to your module directory where the callbacks
++ *    will be located.
+  */
+ function hook_commerce_qb_webconnect_export_info() {
+   // label_callback and uri_callback is the same as add invoice
+@@ -153,11 +159,13 @@ function hook_commerce_qb_webconnect_export_info() {
+     'add_sales_receipt' => array(
+       'qbxml_callback' => 'commerce_qb_webconnect_add_sales_receipt_qbxml',
+       'unique_id_callback' => 'commerce_qb_webconnect_add_sales_receipt_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
+-      'label' => t('Add sales receipt'),
++      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
++      'label' => t('Add sales receipt'),
+       'uri_callback' => 'commerce_qb_webconnect_add_invoice_uri',
+       'weight' => 0,
+-      'order_export' => true
++      'order_export' => true,
++      'return_callback' => '',
++      'file' => '',
+     ),
+   );
+
+diff --git a/commerce_qb_webconnect.module b/commerce_qb_webconnect.module
+index 0db5d74..1c3ff24 100644
+--- a/commerce_qb_webconnect.module
++++ b/commerce_qb_webconnect.module
+@@ -274,6 +274,14 @@ function commerce_qb_webconnect_menu() {
+     'file' => 'commerce_qb_webconnect.admin.inc',
+   );
+
++  $items['admin/commerce/qb-exports/%commerce_qb_webconnect_qb_export'] = array(
++    'title callback' => 'commerce_qb_webconnect_title',
++    'title arguments' => array(3),
++    'page callback' => 'commerce_qb_webconnect_page_view',
++    'page arguments' => array(3),
++    'access arguments' => array('administer qb webconnect'),
++  );
++
+   return $items;
+ }
+
+@@ -284,16 +292,23 @@ function commerce_qb_webconnect_entity_info() {
+   return array(
+     'commerce_qb_webconnect_qb_export' => array(
+       'label' => t('Quickbooks export item'),
+-      'entity class' => 'Entity',
++      'entity class' => 'CommerceQbWebconnectQbExport',
+       'controller class' => 'CommerceQbWebconnectQbExportEntityController',
+-      'load hook' => 'commerce_qb_webconnect_qb_export_load',
++      'fieldable' => FALSE,
+       'views controller class' => 'EntityDefaultViewsController',
+       'base table' => 'commerce_qb_exports',
++      'uri callback' => 'commerce_qb_webconnect_uri',
+       'module' => 'commerce_qb_webconnect',
+       'label callback' => 'commerce_qb_webconnect_qb_export_label',
+       'entity keys' => array(
+         'id' => 'id',
+       ),
++      'view modes' => array(
++        'full' => array(
++          'label' => t('Default'),
++          'custom settings' => FALSE,
++        ),
++      )
+     ),
+   );
+ }
+@@ -329,7 +344,29 @@ function commerce_qb_webconnect_qb_export_load_multiple($export_ids = array(), $
+   $exports = entity_load('commerce_qb_webconnect_qb_export', $export_ids, $conditions, $reset);
+   return $exports;
+ }
++/**
++ * Implements the uri callback
++ */
++function commerce_qb_webconnect_uri($entity) {
++  return array(
++    'path' => 'admin/commerce/qb-exports/' . $entity->id,
++  );
++}
++/**
++ * Callback for a page title when this entity is displayed.
++ */
++function commerce_qb_webconnect_title($entity) {
++  return t('Quickbooks WebConnect item @item', array('@item' => $entity->id));
++}
+
++/**
++ * Sets up content to show an individual model
++ */
++function commerce_qb_webconnect_page_view($entity, $view_mode = 'full') {
++  $controller = entity_get_controller('commerce_qb_webconnect_qb_export');
++  $content = $controller->view(array($entity->id => $entity));
++  return $content;
++}
+ /*
+  * Entity-based save function for QB exports. Automatically deals with encoding JSON data.
+  */
+@@ -458,10 +495,10 @@ function commerce_qb_webconnect_commerce_order_update($order) {
+  * Implements hook_commerce_payment_transaction_insert().
+  */
+ function commerce_qb_webconnect_commerce_payment_transaction_insert($transaction) {
+-  if (commerce_qb_webconnect_exportable_enabled('add_payment')
+-    && ($transaction->status == "success")
+-    && ($transaction->amount > 0)) {
+-    commerce_qb_webconnect_qb_export_save('add_payment', $transaction);
++  if (commerce_qb_webconnect_exportable_enabled('add_payment')) {
++  	if (($transaction->status == "success") && ($transaction->amount > 0)) {
++  	    commerce_qb_webconnect_qb_export_save('add_payment', $transaction);
++  	}
+   }
+ }
+
+@@ -509,6 +546,7 @@ function commerce_qb_webconnect_status_is_exportable($status) {
+  */
+ function commerce_qb_webconnect_exportable_statuses() {
+   $export_statuses = variable_get('commerce_qb_webconnect_export_statuses', array());
++
+   $return = array();
+
+   // this variable comes from the system administration form with zeroes
+@@ -826,6 +864,19 @@ function commerce_qb_webconnect_qb_receiveResponseXML($request) {
+     if (!$retry) {
+       $qb_export = commerce_qb_webconnect_next_in_queue($item->item_type);
+       commerce_qb_webconnect_qb_export_complete($qb_export, $success);
++
++      $info = commerce_qb_webconnect_export_info();
++
++      // Check if there is a return callback. If so, call it.
++      if (isset($info[$item->item_type]['return_callback'])) {
++        $return_callback = $info[$item->item_type]['return_callback'];
++
++        commerce_qb_webconnect_load_file($info[$item->item_type]);
++
++        if (function_exists($return_callback)) {
++          $return_callback($qb_export, $request);
++        }
++      }
+     }
+     $return->receiveResponseXMLResult = 1;
+   } else {
+@@ -850,10 +901,10 @@ function commerce_qb_webconnect_qb_getLastError($request) {
+   $remaining = commerce_qb_webconnect_qb_exports_pending();
+
+   if ($remaining < 1) {
+-    $return->getLastErrorResult = 'No jobs remaining';
++    $request->getLastErrorResult = 'No jobs remaining';
+   }
+
+-  return $return;
++  return $request;
+ }
+
+ /*
+@@ -919,7 +970,7 @@ function commerce_qb_webconnect_check_session($sid) {
+ function theme_commerce_qb_webconnect_wrap_qbxml($variables) {
+   $qbxml = $variables['qbxml'];
+   $output = '<?xml version="1.0" encoding="utf-8"?>
+-  <?qbxml version="7.0"?>
++  <?qbxml version="13.0"?>
+ <QBXML>
+   <QBXMLMsgsRq onError="stopOnError">' . $qbxml .
+   '</QBXMLMsgsRq>
+@@ -990,7 +1041,6 @@ function commerce_qb_webconnect_exportable_orders() {
+
+   if ($results) {
+     $order_ids = array_keys($results['commerce_order']);
+-
+     return commerce_order_load_multiple($order_ids);
+   } else {
+     return FALSE;
+@@ -1073,8 +1123,9 @@ function commerce_qb_webconnect_qbxml($export) {
+
+   $callback = $info[$export->item_type]['callback'];
+
+-  if (function_exists($callback)) {
++  commerce_qb_webconnect_load_file($info[$export->item_type]);
+
++  if (function_exists($callback)) {
+     // first argument is the export data
+     $args = array($export->data, $export->item_type);
+
+@@ -1120,6 +1171,8 @@ function commerce_qb_webconnect_unique_id($item_type, $data) {
+   if (isset($info[$item_type])) {
+     $item_id_callback = $info[$item_type]['unique_id_callback'];
+
++    commerce_qb_webconnect_load_file($info[$item_type]);
++
+     // determine the unique id
+     if (function_exists($item_id_callback)) {
+       $item_id = $item_id_callback($data);
+@@ -1155,6 +1208,7 @@ function commerce_qb_webconnect_qb_export_save($item_type, $data, $op = 'insert'
+     $items_query->entityCondition('entity_type', 'commerce_qb_webconnect_qb_export')
+                 ->propertyCondition('item_type', $item_type)
+                 ->propertyCondition('item_id', $item_id)
++                ->propertyCondition('status_code', $status)
+                 ->count();
+
+     $count = $items_query->execute();
+@@ -1175,6 +1229,7 @@ function commerce_qb_webconnect_qb_export_save($item_type, $data, $op = 'insert'
+   // write a new record
+   $entity = entity_create('commerce_qb_webconnect_qb_export', $export);
+   entity_save('commerce_qb_webconnect_qb_export', $entity);
++
+   return $entity;
+ }
+
+@@ -1185,7 +1240,15 @@ function commerce_qb_webconnect_export_info() {
+   $info = &drupal_static(__FUNCTION__);
+
+   if (!$info) {
+-    $info = module_invoke_all('commerce_qb_webconnect_export_info');
++    foreach (module_implements('commerce_qb_webconnect_export_info') as $module) {
++      foreach (module_invoke($module, 'commerce_qb_webconnect_export_info') as $export_id => $export) {
++        if (empty($export['module'])) {
++          $export['module'] = $module;
++        }
++
++        $info[$export_id] = $export;
++      }
++    }
+
+     // allow modules to alter the export info
+     drupal_alter('commerce_qb_webconnect_export_info', $info);
+@@ -1265,21 +1328,24 @@ function commerce_qb_webconnect_line_item_products($order, $array_key = 'product
+       $line_item_entity = commerce_line_item_load($line_item_id);
+       $lang = field_language('commerce_line_item', $line_item_entity, 'commerce_product');
+
+-      if ($line_item_entity->type == 'product') {
++      if (in_array($line_item_entity->type, commerce_product_line_item_types())) {
+         $product_id = $line_item_entity->commerce_product[$lang][0]['product_id'];
+         $product = commerce_product_load($product_id);
+
+         if ($product) {
+-
+           // either use product_id or line_item_id as a key
+           $key = ($array_key == 'product_id') ? $product_id : $line_item_id;
+           $products[$key] = $product;
+
+-          // insert quantity, initialize first for good measure.
++          // line item prices can be different than the product price,
++          // therefore we need to send the unit price.
++          $products[$key]->commerce_price = $line_item_entity->commerce_unit_price;
++
++          // insert quantity
+           if (!isset($products[$key]->quantity){
+             $products[$key]->quantity = 0;
+-          }
+-          $products[$key]->quantity += $line_item_entity->quantity;
++          }
++          $products[$key]->quantity = $line_item_entity->quantity;
+         }
+       }
+     }
+@@ -1327,6 +1393,8 @@ function commerce_qb_webconnect_qb_export_label($entity) {
+
+   $label_callback = isset($info[$entity->item_type]['label_callback']) ? $info[$entity->item_type]['label_callback'] : null;
+
++  commerce_qb_webconnect_load_file($info[$entity->item_type]);
++
+   if (function_exists($label_callback)) {
+     return $label_callback($entity->data);
+   }
+@@ -1359,7 +1427,7 @@ function commerce_qb_webconnect_parse_sku($sku) {
+
+ /**
+  * Based on a payment method type, retrieve its mapping to a Quickbooks payment method
+- * by invoking its hook.
++ * by invoking its hook. It defaults to the payment methods short title.
+  *
+  * @param string $payment_type
+  *  Type of payment method
+@@ -1381,8 +1449,15 @@ function commerce_qb_webconnect_payment_method_mapping($payment_type, $export_ty
+     // payment method
+   foreach (module_implements('commerce_payment_method_info') as $module) {
+     foreach (module_invoke($module, 'commerce_payment_method_info') as $method_id => $payment_method) {
++
+       if ($method_id == $payment_type) {
+-        $method = module_invoke($module, 'commerce_qb_webconnect_payment_mapping', $payment_type, $export_type, $data);
++        foreach (module_implements('commerce_qb_webconnect_payment_mapping') as $mapping_module) {
++          $method = module_invoke($mapping_module, 'commerce_qb_webconnect_payment_mapping', $payment_type, $export_type, $data);
++        }
++
++        if (empty($method)) {
++          $method = $payment_method['short_title'];
++        }
+       }
+     }
+   }
+@@ -1405,3 +1480,14 @@ function _commerce_qb_webconnect_get_lang($data) {
+
+   return reset($lang);
+ }
++/**
++ * Check to see if there is an include file with this export, and include it.
++ *
++ */
++function commerce_qb_webconnect_load_file($export) {
++  // include file if specified
++  if (!empty($export['file'])) {
++    $parts = explode('.', $export['file']);
++    module_load_include(array_pop($parts), $export['module'], implode('.', $parts));
++  }
++}
+diff --git a/commerce_qb_webconnect.qb.inc b/commerce_qb_webconnect.qb.inc
+index 2a938b6..68a316f 100644
+--- a/commerce_qb_webconnect.qb.inc
++++ b/commerce_qb_webconnect.qb.inc
+@@ -3,6 +3,13 @@
+ /*
+  * Implements hook_commerce_qb_webconnect_export_info().
+  */
++
++/*
++ * Using the php-devkit (~100MB) for Quickbooks_cast::cast method
++ * Need a more flexible include or else need to borrow this function for use in this module
++ */
++require_once DRUPAL_ROOT . '/quickbooks-php-devkit/QuickBooks.php';
++
+ function commerce_qb_webconnect_commerce_qb_webconnect_export_info() {
+   $path = drupal_get_path('module', 'commerce_qb_webconnect') . '/qbxml';
+
+@@ -23,8 +30,8 @@ function commerce_qb_webconnect_commerce_qb_webconnect_export_info() {
+       'template_path' => $path,
+       'template_vars' => commerce_qb_webconnect_product_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_product_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_product_label',
+-      'label' => t('Add inventory product'),
++      'label_callback' => 'commerce_qb_webconnect_add_product_label',
++      'label' => t('Add inventory product'),
+       'uri_callback' => 'commerce_qb_webconnect_add_product_uri',
+       'weight' => -1,
+     ),
+@@ -34,7 +41,7 @@ function commerce_qb_webconnect_commerce_qb_webconnect_export_info() {
+       'template_path' => $path,
+       'template_vars' => commerce_qb_webconnect_product_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_product_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_product_label',
++      'label_callback' => 'commerce_qb_webconnect_add_product_label',
+       'label' => t('Add non-inventory product'),
+       'uri_callback' => 'commerce_qb_webconnect_add_product_uri',
+       'weight' => -1,
+@@ -43,10 +50,10 @@ function commerce_qb_webconnect_commerce_qb_webconnect_export_info() {
+       'callback' => 'commerce_qb_webconnect_add_order_variables',
+       'template' => 'add_invoice.qbxml',
+       'template_path' => $path,
+-      'template_vars' => commerce_qb_webconnect_order_vars(),
++      'template_vars' => commerce_qb_webconnect_order_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_invoice_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
+-      'label' => t('Add invoice'),
++      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
++      'label' => t('Add invoice'),
+       'uri_callback' => 'commerce_qb_webconnect_add_invoice_uri',
+       'weight' => 0, // @TODO it should be able to interpret this without specifying 0
+       'order_export' => TRUE
+@@ -55,10 +62,10 @@ function commerce_qb_webconnect_commerce_qb_webconnect_export_info() {
+       'callback' => 'commerce_qb_webconnect_add_order_variables',
+       'template' => 'add_sales_receipt.qbxml',
+       'template_path' => $path,
+-      'template_vars' => commerce_qb_webconnect_order_vars(),
++      'template_vars' => commerce_qb_webconnect_order_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_sales_receipt_unique_id',
+       'label_callback' => 'commerce_qb_webconnect_add_invoice_label', // same as add invoice
+-      'label' => t('Add sales receipt'),
++      'label' => t('Add sales receipt'),
+       'uri_callback' => 'commerce_qb_webconnect_add_invoice_uri', // same as add invoice
+       'weight' => 0,
+       'order_export' => TRUE
+@@ -67,10 +74,10 @@ function commerce_qb_webconnect_commerce_qb_webconnect_export_info() {
+       'callback' => 'commerce_qb_webconnect_add_payment_variables',
+       'template' => 'add_payment.qbxml',
+       'template_path' => $path,
+-      'template_vars' => commerce_qb_webconnect_payment_vars(),
++      'template_vars' => commerce_qb_webconnect_payment_vars(),
+       'unique_id_callback' => 'commerce_qb_webconnect_add_payment_unique_id',
+       'label_callback' => 'commerce_qb_webconnect_add_payment_label',
+-      'label' => t('Add payment'),
++      'label' => t('Add payment'),
+       'weight' => 1,
+     )
+   );
+@@ -193,7 +200,7 @@ function commerce_qb_webconnect_add_invoice_uri($data) {
+     $uri = entity_uri('commerce_order', $order);
+
+     if ($uri) {
+-      return $uri['path'];
++     return $uri['path'];
+     }
+   }
+ }
+@@ -203,7 +210,7 @@ function commerce_qb_webconnect_add_invoice_uri($data) {
+  */
+ function commerce_qb_webconnect_add_product_uri($data) {
+   $product = commerce_product_load($data['product_id']);
+-  if ($product){
++  if ($product) {
+     $uri = entity_uri('commerce_product', $product);
+
+     if ($uri) {
+@@ -219,23 +226,65 @@ function commerce_qb_webconnect_add_customer_variables($data) {
+   $lang = array_keys($data['billing']['commerce_customer_address']);
+   $lang = reset($lang);
+   $billing = $data['billing']['commerce_customer_address'][$lang][0];
+-  $billing_name = explode(' ', $data['billing']['commerce_customer_address'][$lang][0]['name_line']);
+-  $billing['first_name'] = $billing_name[0];
+-  $billing['last_name'] = $billing_name[1];
+-  $variables['billing'] = $billing;
++  $billing['name_line'] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'Contact', trim($billing['name_line']));
++  $billing_name = explode(' ', unaccent($billing['name_line']));
++  $billing['last_name'] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'LastName', array_pop($billing_name));
++  $billing['first_name'] =  QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'FirstName', implode(' ', $billing_name));
++  $variables['billing'] = cast_customer_addr_variables('BillAddress', $billing);
+
+   if (isset($data['shipping'])) {
+     $variables['has_shipping'] = TRUE;
+     $shipping_lang = _commerce_qb_webconnect_get_lang($data['shipping']['commerce_customer_address']);
+-    $variables['shipping'] = $data['shipping']['commerce_customer_address'][$shipping_lang][0];
++    $variables['shipping'] = cast_customer_addr_variables('ShipAddress', $data['shipping']['commerce_customer_address'][$shipping_lang][0]);
+   }
+
+-  $variables['data']['email'] = $data['email'];
+-  $variables['data']['phone'] = $data['phone'];
++  $variables['data']['phone'] = $data['shipping']['field_phone'];
++  $variables['data']['email'] = $data['mail'];
+
+   return $variables;
+ }
+
++function unaccent($text) {
++  static $search, $replace;
++  if (!$search) {
++    $search = $replace = array();
++    // Get the HTML entities table into an array
++    $trans = get_html_translation_table(HTML_ENTITIES);
++    // Go through the entity mappings one-by-one
++    foreach ($trans as $literal => $entity) {
++      // Make sure we don't process any other characters
++      // such as fractions, quotes etc:
++      if (ord($literal) >= 192) {
++        // Get the accented form of the letter
++        $search[] = $literal;
++        // Get e.g. 'E' from the string '&Eacute'
++        $replace[] = $entity[1];
++      }
++    }
++  }
++  return htmlentities(str_replace($search, $replace, html_entity_decode($text)));
++}
++
++function cast_customer_addr_variables($addrType, $addrVars) {
++  $addrFieldMap = array (
++    'thoroughfare'        => 'Addr1',
++    'premise'             => 'Addr2',
++    'sub_premise'         => 'Addr3',
++    'locality'            => 'City',
++    'administrative_area' => 'State',
++    'postal_code'         => 'PostalCode',
++    'country'             => 'Country'
++  );
++
++  foreach ($addrFieldMap as $key => $value) {
++    if (array_key_exists($key, $addrVars)) {
++      $addrVars[$key] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, $addrType . '_' . $value, $addrVars[$key]);
++    }
++  }
++
++  return $addrVars;
++}
++
+ /*
+  * QBXML callback for add product
+  */
+@@ -260,7 +309,7 @@ function commerce_qb_webconnect_add_product_variables($data, $export_type) {
+   }
+
+   $variables['title'] = $data['title'];
+-  $variables['product_id'] = $data['product_id'];
++  $variables['product_id'] = $data['product_id'];
+
+   return $variables;
+ }
+@@ -276,12 +325,14 @@ function commerce_qb_webconnect_add_order_variables($data, $export_type) {
+   $profile_id = $data['commerce_customer_billing'][$lang][0]['profile_id'];
+   $profile = commerce_customer_profile_load($profile_id);
+   $profile_info = $profile->commerce_customer_address[$lang][0];
+-
+-  $billing_name = explode(' ', $profile->commerce_customer_address[$lang][0]['name_line']);
+-  $variables['first_name'] = $billing_name[0];
+-  $variables['last_name'] = $billing_name[1];
+-
+-  $variables['billing_address'] = $profile_info;
++  $billing_name_line = trim($profile->commerce_customer_address[$lang][0]['name_line']);
++  $billing_name_line = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'Contact', $billing_name_line);
++  $billing_name_line = unaccent($billing_name_line);
++  $billing_name = explode(' ', $billing_name_line);
++  $variables['last_name'] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'LastName', array_pop($billing_name));
++  $variables['first_name'] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'FirstName', implode(' ' , $billing_name));
++
++  $variables['billing_address'] = cast_customer_addr_variables('BillAddress', $profile_info);
+   $variables['order_id'] = $data['order_id'];
+   $variables['date'] = format_date($data['created'], 'custom', 'Y-m-d');
+   $order = commerce_order_load($data['order_id']);
+@@ -295,7 +346,7 @@ function commerce_qb_webconnect_add_order_variables($data, $export_type) {
+   $variables['tax_type'] = $tax_account;
+
+   // load products
+-  $products = commerce_qb_webconnect_line_item_products($order);
++  $products = commerce_qb_webconnect_line_item_products($order);
+
+   // allow modules to alter the list of products being exported with this order
+   drupal_alter('commerce_qb_webconnect_order_products', $products, $data);
+@@ -305,7 +356,7 @@ function commerce_qb_webconnect_add_order_variables($data, $export_type) {
+     foreach ($products as $product) {
+       $price_lang = _commerce_qb_webconnect_get_lang($product->commerce_price);
+       $price_array = NULL;
+-      $price_array = $product->commerce_price[$price_lang][0];
++      $price_array = $product->commerce_price[$price_lang][0];
+       $price = commerce_currency_amount_to_decimal($price_array['amount'], $price_array['currency_code']);
+
+       $variables['products'][] = array(
+@@ -340,7 +391,7 @@ function commerce_qb_webconnect_add_order_variables($data, $export_type) {
+     $shipping_profile_id = $data['commerce_customer_shipping'][$shipping_profile_lang][0]['profile_id'];
+     $shipping_profile = commerce_customer_profile_load($shipping_profile_id);
+     $shipping_profile_info = $shipping_profile->commerce_customer_address[$shipping_profile_lang][0];
+-    $variables['shipping_address'] = $shipping_profile_info;
++    $variables['shipping_address'] = cast_customer_addr_variables('ShipAddress', $shipping_profile_info);
+   }
+
+   // find payment method if applicable
+@@ -363,7 +414,12 @@ function commerce_qb_webconnect_add_payment_variables($data) {
+   // load customer profile
+   $profile_id = $order->commerce_customer_billing[$lang][0]['profile_id'];
+   $profile = commerce_customer_profile_load($profile_id);
+-  $variables['customer_name'] = $profile->commerce_customer_address[$lang][0]['name_line'];
++  $billing_name_line = trim($profile->commerce_customer_address[$lang][0]['name_line']);
++  $billing_name_line = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'Contact', $billing_name_line);
++  $billing_name_line = unaccent($billing_name_line);
++  $billing_name = explode(' ', $billing_name_line);
++  $variables['last_name'] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'LastName', array_pop($billing_name));
++  $variables['first_name'] = QuickBooks_Cast::cast(QUICKBOOKS_ADD_CUSTOMER, 'FirstName', implode(' ' , $billing_name));
+
+   $variables['payment_method'] = commerce_qb_webconnect_payment_method_mapping($data['payment_method'], 'add_payment', $data);
+
+@@ -411,10 +467,10 @@ function commerce_payment_example_commerce_qb_webconnect_payment_mapping($paymen
+         case 'add_sales_receipt':
+         case 'add_payment':
+           return variable_get('commerce_qb_webconnect_example_payment_method', '');
+-
++
+           break;
+       }
+-
+       break;
+   }
+ }
++
+diff --git a/includes/commerce_qb_webconnect_qb_export.controller.inc b/includes/commerce_qb_webconnect_qb_export.controller.inc
+index 4b58b2d..9c99681 100644
+--- a/includes/commerce_qb_webconnect_qb_export.controller.inc
++++ b/includes/commerce_qb_webconnect_qb_export.controller.inc
+@@ -1,9 +1,45 @@
+ <?php
++class CommerceQbWebconnectQbExport extends Entity {
++  public function __construct($values = array()) {
++    parent::__construct($values, 'commerce_qb_webconnect_qb_export');
++  }
++  protected function defaultLabel() {
++    return $this->id;
++  }
+
++  protected function defaultUri() {
++    return array('path' => 'admin/commerce/qb-exports/' . $this->id);
++  }
++}
+ class CommerceQbWebconnectQbExportEntityController extends EntityAPIController {
+-  function attachLoad(&$queried_exports, $revision_id = FALSE){
++  function attachLoad(&$queried_exports, $revision_id = FALSE) {
+     foreach ($queried_exports as &$export) {
+       $export->data = drupal_json_decode($export->data);
+     }
+   }
++  /**
++   * Builds a structured array representing the entity's content.
++   *
++   * The content built for the entity will vary depending on the $view_mode
++   * parameter.
++   *
++   * @param $entity
++   *   An entity object.
++   * @param $view_mode
++   *   View mode, e.g. 'full'
++   * @param $langcode
++   *   (optional) A language code to use for rendering. Defaults to the global
++   *   content language of the current request.
++   * @return
++   *   The renderable array.
++   */
++  public function buildContent($entity, $view_mode = 'full', $langcode = NULL, $content = array()) {
++    $qbxml = commerce_qb_webconnect_qbxml($entity);
++
++    $content['webconnect_table'] = array(
++      '#markup' => '<pre>' . htmlspecialchars($qbxml) . '</pre>',
++    );
++
++    return parent::buildContent($entity, $view_mode, $langcode, $content);
++  }
+ }
+diff --git a/qbxml/add_customer.qbxml.tpl.php b/qbxml/add_customer.qbxml.tpl.php
+index eb291ae..e8377d7 100644
+--- a/qbxml/add_customer.qbxml.tpl.php
++++ b/qbxml/add_customer.qbxml.tpl.php
+@@ -6,9 +6,13 @@
+     <BillAddress>
+       <Addr1><?php print $billing['thoroughfare'] ?></Addr1>
+       <Addr2><?php print $billing['premise'] ?></Addr2>
++<?php if (isset($billing['sub_premise'])): ?>
+       <Addr3><?php print $billing['sub_premise'] ?></Addr3>
++<?php endif; ?>
+       <City><?php print $billing['locality'] ?></City>
++<?php if (isset($billing['administrative_area'])): ?>
+       <State><?php print $billing['administrative_area'] ?></State>
++<?php endif; ?>
+       <PostalCode><?php print $billing['postal_code'] ?></PostalCode>
+       <Country><?php print $billing['country'] ?></Country>
+     </BillAddress>
+@@ -16,9 +20,13 @@
+       <ShipAddress>
+         <Addr1><?php print $shipping['thoroughfare'] ?></Addr1>
+         <Addr2><?php print $shipping['premise'] ?></Addr2>
++<?php if (isset($shipping['sub_premise'])): ?>
+         <Addr3><?php print $shipping['sub_premise'] ?></Addr3>
++<?php endif; ?>
+         <City><?php print $shipping['locality'] ?></City>
++<?php if (isset($shipping['administrative_area'])): ?>
+         <State><?php print $shipping['administrative_area'] ?></State>
++<?php endif; ?>
+         <PostalCode><?php print $shipping['postal_code'] ?></PostalCode>
+         <Country><?php print $shipping['country'] ?></Country>
+       </ShipAddress>
+diff --git a/qbxml/add_inventory_product.qbxml.tpl.php b/qbxml/add_inventory_product.qbxml.tpl.php
+index 4c0d622..06b8f57 100644
+--- a/qbxml/add_inventory_product.qbxml.tpl.php
++++ b/qbxml/add_inventory_product.qbxml.tpl.php
+@@ -2,9 +2,9 @@
+   <ItemInventoryAdd>
+     <Name><?php print $sku ?></Name>
+ <?php if($parent_sku): ?>
+-    <ParentRef>
+-      <FullName><?php print $parent_sku ?></FullName>
+-    </ParentRef>
++      <ParentRef>
++        <FullName><?php print $parent_sku ?></FullName>
++      </ParentRef>
+ <?php endif; ?>
+     <SalesDesc><?php print $title ?></SalesDesc>
+     <SalesPrice><?php print $price ?></SalesPrice>
+diff --git a/qbxml/add_payment.qbxml.tpl.php b/qbxml/add_payment.qbxml.tpl.php
+index 04144b0..4c2ef48 100644
+--- a/qbxml/add_payment.qbxml.tpl.php
++++ b/qbxml/add_payment.qbxml.tpl.php
+@@ -1,11 +1,11 @@
+ <ReceivePaymentAddRq>
+   <ReceivePaymentAdd>
+     <CustomerRef>
+-      <FullName><?php print $customer_name ?></FullName>
++      <FullName><?php print $last_name . ', ' . $first_name ?></FullName>
+     </CustomerRef>
+     <TxnDate><?php print $date ?></TxnDate>
+     <RefNumber><?php print $ref_number ?></RefNumber>
+-    <TotalAmount><?php print $amount ?></TotalAmount>
++    <TotalAmount><?php print number_format($amount, 2, '.', '') ?></TotalAmount>
+     <PaymentMethodRef>
+       <FullName><?php print $payment_method ?></FullName>
+     </PaymentMethodRef>
+diff --git a/views/commerce_qb_webconnect.views_default.inc b/views/commerce_qb_webconnect.views_default.inc
+index db4d737..1e86447 100644
+--- a/views/commerce_qb_webconnect.views_default.inc
++++ b/views/commerce_qb_webconnect.views_default.inc
+@@ -1,7 +1,7 @@
+ <?php
+
+ function commerce_qb_webconnect_views_default_views(){
+-  $view = new view;
++  $view = new view();
+   $view->name = 'quickbooks_exports';
+   $view->description = 'List of orders, products and customers to be exported to Quickbooks';
+   $view->tag = 'default';
+@@ -14,6 +14,7 @@ function commerce_qb_webconnect_views_default_views(){
+   /* Display: Master */
+   $handler = $view->new_display('default', 'Master', 'default');
+   $handler->display->display_options['title'] = 'Quickbooks Exports';
++  $handler->display->display_options['use_more_always'] = FALSE;
+   $handler->display->display_options['access']['type'] = 'none';
+   $handler->display->display_options['cache']['type'] = 'none';
+   $handler->display->display_options['query']['type'] = 'views_query';
+@@ -22,101 +23,31 @@ function commerce_qb_webconnect_views_default_views(){
+   $handler->display->display_options['pager']['type'] = 'full';
+   $handler->display->display_options['pager']['options']['items_per_page'] = '10';
+   $handler->display->display_options['style_plugin'] = 'table';
+-  /* Field: Quickbooks export item: Quickbooks export item ID */
+-  $handler->display->display_options['fields']['id']['id'] = 'id';
+-  $handler->display->display_options['fields']['id']['table'] = 'commerce_qb_exports';
+-  $handler->display->display_options['fields']['id']['field'] = 'id';
+-  $handler->display->display_options['fields']['id']['label'] = 'ID';
+-  $handler->display->display_options['fields']['id']['alter']['alter_text'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['make_link'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['absolute'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['external'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['replace_spaces'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['trim_whitespace'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['nl2br'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['word_boundary'] = 1;
+-  $handler->display->display_options['fields']['id']['alter']['ellipsis'] = 1;
+-  $handler->display->display_options['fields']['id']['alter']['strip_tags'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['trim'] = 0;
+-  $handler->display->display_options['fields']['id']['alter']['html'] = 0;
+-  $handler->display->display_options['fields']['id']['element_label_colon'] = 1;
+-  $handler->display->display_options['fields']['id']['element_default_classes'] = 1;
+-  $handler->display->display_options['fields']['id']['hide_empty'] = 0;
+-  $handler->display->display_options['fields']['id']['empty_zero'] = 0;
+-  $handler->display->display_options['fields']['id']['hide_alter_empty'] = 0;
+-  $handler->display->display_options['fields']['id']['format_plural'] = 0;
+-  /* Field: Quickbooks export item: Link to referenced entity */
+-  $handler->display->display_options['fields']['link_to_entity']['id'] = 'link_to_entity';
+-  $handler->display->display_options['fields']['link_to_entity']['table'] = 'commerce_qb_exports';
+-  $handler->display->display_options['fields']['link_to_entity']['field'] = 'link_to_entity';
+-  $handler->display->display_options['fields']['link_to_entity']['label'] = 'Export';
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['alter_text'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['make_link'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['absolute'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['external'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['replace_spaces'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['trim_whitespace'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['nl2br'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['word_boundary'] = 1;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['ellipsis'] = 1;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['strip_tags'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['trim'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['alter']['html'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['element_label_colon'] = 1;
+-  $handler->display->display_options['fields']['link_to_entity']['element_default_classes'] = 1;
+-  $handler->display->display_options['fields']['link_to_entity']['hide_empty'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['empty_zero'] = 0;
+-  $handler->display->display_options['fields']['link_to_entity']['hide_alter_empty'] = 0;
+-  /* Field: Quickbooks export item: Label */
++  /* Field: Quickbooks export item: Rendered Quickbooks export item */
++  $handler->display->display_options['fields']['rendered_entity']['id'] = 'rendered_entity';
++  $handler->display->display_options['fields']['rendered_entity']['table'] = 'views_entity_commerce_qb_webconnect_qb_export';
++  $handler->display->display_options['fields']['rendered_entity']['field'] = 'rendered_entity';
++  $handler->display->display_options['fields']['rendered_entity']['label'] = 'ID';
++  $handler->display->display_options['fields']['rendered_entity']['link_to_entity'] = 1;
++  $handler->display->display_options['fields']['rendered_entity']['display'] = 'id';
++  $handler->display->display_options['fields']['rendered_entity']['view_mode'] = 'full';
++  /* Field: Quickbooks export item: Item_type */
+   $handler->display->display_options['fields']['item_type']['id'] = 'item_type';
+   $handler->display->display_options['fields']['item_type']['table'] = 'commerce_qb_exports';
+   $handler->display->display_options['fields']['item_type']['field'] = 'item_type';
+   $handler->display->display_options['fields']['item_type']['label'] = 'Type';
+-  $handler->display->display_options['fields']['item_type']['alter']['alter_text'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['make_link'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['absolute'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['external'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['replace_spaces'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['trim_whitespace'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['nl2br'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['word_boundary'] = 1;
+-  $handler->display->display_options['fields']['item_type']['alter']['ellipsis'] = 1;
+-  $handler->display->display_options['fields']['item_type']['alter']['strip_tags'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['trim'] = 0;
+-  $handler->display->display_options['fields']['item_type']['alter']['html'] = 0;
+-  $handler->display->display_options['fields']['item_type']['element_label_colon'] = 1;
+-  $handler->display->display_options['fields']['item_type']['element_default_classes'] = 1;
+-  $handler->display->display_options['fields']['item_type']['hide_empty'] = 0;
+-  $handler->display->display_options['fields']['item_type']['empty_zero'] = 0;
+-  $handler->display->display_options['fields']['item_type']['hide_alter_empty'] = 0;
++  $handler->display->display_options['fields']['item_type']['hide_alter_empty'] = FALSE;
+   /* Field: Quickbooks export item: Status_code */
+   $handler->display->display_options['fields']['status_code']['id'] = 'status_code';
+   $handler->display->display_options['fields']['status_code']['table'] = 'commerce_qb_exports';
+   $handler->display->display_options['fields']['status_code']['field'] = 'status_code';
+   $handler->display->display_options['fields']['status_code']['label'] = 'Status';
+-  $handler->display->display_options['fields']['status_code']['alter']['alter_text'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['make_link'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['absolute'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['external'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['replace_spaces'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['trim_whitespace'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['nl2br'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['word_boundary'] = 1;
+-  $handler->display->display_options['fields']['status_code']['alter']['ellipsis'] = 1;
+-  $handler->display->display_options['fields']['status_code']['alter']['strip_tags'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['trim'] = 0;
+-  $handler->display->display_options['fields']['status_code']['alter']['html'] = 0;
+-  $handler->display->display_options['fields']['status_code']['element_label_colon'] = 1;
+-  $handler->display->display_options['fields']['status_code']['element_default_classes'] = 1;
+-  $handler->display->display_options['fields']['status_code']['hide_empty'] = 0;
+-  $handler->display->display_options['fields']['status_code']['empty_zero'] = 0;
+-  $handler->display->display_options['fields']['status_code']['hide_alter_empty'] = 0;
+-  $handler->display->display_options['fields']['status_code']['format_plural'] = 0;
++  $handler->display->display_options['fields']['status_code']['hide_alter_empty'] = FALSE;
+
+   /* Display: Block */
+   $handler = $view->new_display('block', 'Block', 'block_1');
+-
++
+   $views['quickbooks_exports'] = $view;
+-
++
+   return $views;
+-}
+\ No newline at end of file
++}
+diff --git a/views/commerce_qb_webconnect_handler_field_export_label.inc b/views/commerce_qb_webconnect_handler_field_export_label.inc
+index 26cfbf3..c6d3f16 100644
+--- a/views/commerce_qb_webconnect_handler_field_export_label.inc
++++ b/views/commerce_qb_webconnect_handler_field_export_label.inc
+@@ -16,12 +16,7 @@ class commerce_qb_webconnect_handler_field_export_label extends views_handler_fi
+       $uri_callback = isset($info[$type]['uri_callback']) ? $info[$type]['uri_callback'] : NULL;
+
+       if (isset($this->options['link_to_reference']) && $this->options['link_to_reference'] && function_exists($uri_callback)) {
+-        $uri = $uri_callback($data);
+-        if ($uri) {
+-          return l($label_callback($data), $uri);
+-        } else {
+-          return $label_callback($data) . ' (Invalid)';
+-        }
++        return l($label_callback($data), $uri_callback($data));
+       }
+
+       return $label_callback($data);
+--
+1.8.3.4 (Apple Git-47)
+

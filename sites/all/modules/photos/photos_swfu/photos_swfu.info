@@ -1,0 +1,13 @@
+name = "Photos SWFUpload"
+description = SWFUpload flash utility to upload multiple images at once.
+package = album photos
+dependencies[] = photos
+dependencies[] = libraries (>=2.x)
+core = 7.x
+
+; Information added by Drupal.org packaging script on 2014-05-29
+version = "7.x-3.0-rc2"
+core = "7.x"
+project = "photos"
+datestamp = "1401368640"
+

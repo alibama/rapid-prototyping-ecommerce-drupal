@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function commerce_purchase_order_install(){
+  // Remind user to set validation settings.
+  $settings_url = url('admin/commerce/config/payment-methods/manage/commerce_payment_commerce_purchase_order/edit/3', array('absolute' => TRUE));
+  drupal_set_message(t('Thank you for installing commerce purchase order, kindly set the purchase order by visiting <a href="@settings">purchase order settings</a>.', array('@settings' => $settings_url)), 'status', FALSE);
+}
+
+
+/**
+ * Implements hook_schema().
+ */
+function commerce_purchase_order_schema() {
+  $schema = array();
+  $schema['commerce_purchase_order'] = array(
+    'description' => 'The base table for PO numbers.',
+    'fields' => array(
+      'order_id' => array(
+        'description' => 'The order id.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'po_number' => array(
+        'description' => 'The PO number.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('order_id', 'po_number')
+  );
+  return $schema;
+}
+

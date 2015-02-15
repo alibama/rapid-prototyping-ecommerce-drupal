@@ -1,0 +1,70 @@
+--- commerce_pricing_attributes.module
++++ commerce_pricing_attributes.module
+@@ -1045,31 +1045,58 @@
+             // If the option is enabled.
+             if($option['enabled']){
+ 
+-              // switch the price operator sign.
++              // Switch the price operator prefix
+               switch ($option['price_op']) {
+                 case 'plus':
+-                  $sign = '+';
++                case 'plus_percent':
++                  $prefix = '+';
+                   break;
+                 case 'minus':
+-                  $sign = '-';
++                case 'minus_percent':
++                  $prefix = '-';
+                   break;
+                 default:
+-                  $sign = '';
++                  $prefix = '';
+                   break;
+               }
+ 
+-              $default_currency_code = commerce_default_currency();
++              // Switch the price operator suffix
++              switch ($option['price_op']) {
++                case 'plus_percent':
++                case 'minus_percent':
++                  $suffix = '%';
++                  break;
++                default:
++                  $suffix = '';
++                  break;
++              }
++
++              // Switch the value displayed
++              $attribute_value = $option['price'];
++              switch ($option['price_op']) {
++                case 'plus':
++                case 'minus':
++                  $default_currency_code = commerce_default_currency();
++
++                  // If the currency of the option price is not set then set the deafult currency.
++                  if(!isset($option['currency_code']) or empty($option['currency_code'])){
++                    $option['currency_code'] = $default_currency_code;
++                  }
+ 
+-              // If the currency of the option price is not set then set the deafult currency.
+-              if(!isset($option['currency_code']) or empty($option['currency_code'])){
+-                $option['currency_code'] = $default_currency_code;
++                  $attribute_value = commerce_currency_format($attribute_value, $option['currency_code']);
++                  break;
++
++                case 'plus_percent':
++                case 'minus_percent':
++                  $attribute_value /= 100;
++                  break;
+               }
+ 
+               // Display the price inside the option item.
+               if(isset($form[$field_name][$langcode]['#options'])){
+                 $options[$option_value] = $form[$field_name][$langcode]['#options'][$option_value];
+                 if($option['price'] > 0){
+-                  $options[$option_value] .= ' (' . $sign . commerce_currency_format($option['price'], $option['currency_code']) . ')';
++                  $options[$option_value] .= " ({$prefix}{$attribute_value}{$suffix})";
+                 }
+               }
+             }

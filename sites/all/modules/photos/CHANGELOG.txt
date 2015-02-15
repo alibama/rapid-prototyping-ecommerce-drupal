@@ -1,0 +1,37 @@
+album photos for drupal-7.x
+
+2014/2/22
+1. Add search integration.
+
+2014/2/08
+1. Fix display settings for node full and teaser view.
+
+2014/2/05
+1. Add plupload module integration.
+
+2013/8/04
+1. Rename table {photos_vote} to {photos_comment}.
+2. Change {photos_image}.wid from tinyint to int.
+3. Move css images into css/images folder.
+
+2013/8/02
+1. Add support for views module.
+
+2013/7/30
+1. Merged photos_access module as sub module.
+2. Added support for Drupal core private file system.
+
+2013/1/24
+1. Add new database field {photos_image}.title and migrate over from using {file_managed}.filename.
+
+2012/9/08
+1. Added confirm_form to delete image.
+2. Removed SWFUpload MIT files and added support for Libraries API 2.x (photos_swfu).
+3. Removed Jeditable MIT files and added support for Libraries API 2.x.
+4. Added token to Jeditable fields.
+
+2012/8/23
+1. Renamed database tables from x_* to photos_*.
+2. Renamed variables and removed unused variables.
+3. Integrate with core image module to use image styles.
+4. Removed thickbox and added support for colorbox.

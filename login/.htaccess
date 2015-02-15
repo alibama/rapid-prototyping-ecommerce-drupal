@@ -1,0 +1,3 @@
+AuthType NetBadge
+Require valid-user
+PubcookieAppId rpl

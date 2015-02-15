@@ -1,0 +1,133 @@
+diff --git a/commerce_pricing_attributes.admin.inc b/commerce_pricing_attributes.admin.inc
+index 3f1a9f2..12cb2be 100644
+--- a/commerce_pricing_attributes.admin.inc
++++ b/commerce_pricing_attributes.admin.inc
+@@ -55,7 +55,7 @@ function commerce_pricing_attributes_default_setting_form($form, &$form_state){
+     else{
+       $form['options'][$option_value]['price_op'] = array(
+         '#type' => 'select',
+-        '#options' => array('plus' => '+', 'minus' => '-'),
++        '#options' => array('plus' => '+', 'minus' => '-', 'plus_percent' => '+%', 'minus_percent' => '-%'),
+         '#default_value' => isset($defaults[$option_value]['price_op'])?$defaults[$option_value]['price_op']:'plus',
+       );
+ 
+diff --git a/commerce_pricing_attributes.module b/commerce_pricing_attributes.module
+index 6110277..143bf7b 100644
+--- a/commerce_pricing_attributes.module
++++ b/commerce_pricing_attributes.module
+@@ -533,7 +533,7 @@ function commerce_pricing_attributes_field_widget_form(&$form, &$form_state, $fi
+             else{
+               $element['set_details'][$option_field_name]['options'][$option_value]['price_op'] = array(
+                 '#type' => 'select',
+-                '#options' => array('plus' => '+', 'minus' => '-'),
++                '#options' => array('plus' => '+', 'minus' => '-', 'plus_percent' => '+%', 'minus_percent' => '-%'),
+                 '#default_value' => isset($items[$delta]['set_details'][$option_field_name]['options'][$option_value]['price_op'])?$items[$delta]['set_details'][$option_field_name]['options'][$option_value]['price_op']:$defaults[$option_value]['price_op'],
+               );
+ 
+@@ -1045,31 +1045,58 @@ function commerce_pricing_attributes_field_attach_form($entity_type, $entity, &$
+             // If the option is enabled.
+             if($option['enabled']){
+ 
+-              // switch the price operator sign.
++              // Switch the price operator prefix
+               switch ($option['price_op']) {
+                 case 'plus':
+-                  $sign = '+';
++                case 'plus_percent':
++                  $prefix = '+';
+                   break;
+                 case 'minus':
+-                  $sign = '-';
++                case 'minus_percent':
++                  $prefix = '-';
+                   break;
+                 default:
+-                  $sign = '';
++                  $prefix = '';
+                   break;
+               }
+ 
+-              $default_currency_code = commerce_default_currency();
++              // Switch the price operator suffix
++              switch ($option['price_op']) {
++                case 'plus_percent':
++                case 'minus_percent':
++                  $suffix = '%';
++                  break;
++                default:
++                  $suffix = '';
++                  break;
++              }
++
++              // Switch the value displayed
++              $attribute_value = $option['price'];
++              switch ($option['price_op']) {
++                case 'plus':
++                case 'minus':
++                  $default_currency_code = commerce_default_currency();
++
++                  // If the currency of the option price is not set then set the deafult currency.
++                  if(!isset($option['currency_code']) or empty($option['currency_code'])){
++                    $option['currency_code'] = $default_currency_code;
++                  }
+ 
+-              // If the currency of the option price is not set then set the deafult currency.
+-              if(!isset($option['currency_code']) or empty($option['currency_code'])){
+-                $option['currency_code'] = $default_currency_code;
++                  $attribute_value = commerce_currency_format($attribute_value, $option['currency_code']);
++                  break;
++
++                case 'plus_percent':
++                case 'minus_percent':
++                  $attribute_value /= 100;
++                  break;
+               }
+ 
+               // Display the price inside the option item.
+               if(isset($form[$field_name][$langcode]['#options'])){
+                 $options[$option_value] = $form[$field_name][$langcode]['#options'][$option_value];
+                 if($option['price'] > 0){
+-                  $options[$option_value] .= ' (' . $sign . commerce_currency_format($option['price'], $option['currency_code']) . ')';
++                  $options[$option_value] .= " ({$prefix}{$attribute_value}{$suffix})";
+                 }
+               }
+             }
+diff --git a/commerce_pricing_attributes.rules.inc b/commerce_pricing_attributes.rules.inc
+index 8c8f738..78e9732 100644
+--- a/commerce_pricing_attributes.rules.inc
++++ b/commerce_pricing_attributes.rules.inc
+@@ -73,8 +73,23 @@ function commerce_pricing_attributes_calculate_adjusment($line_item_wrapper){
+                 $attribute['set_details'][$field_name]['options'][$selected_option]['currency_code'] = $default_currency_code;
+               }
+ 
+-              // $price = $attribute['set_details'][$field_name]['options'][$selected_option]['price'];
+-              $price = commerce_currency_convert($attribute['set_details'][$field_name]['options'][$selected_option]['price'], $attribute['set_details'][$field_name]['options'][$selected_option]['currency_code'], $covert_to_currency);
++              $price_op = $attribute['set_details'][$field_name]['options'][$selected_option]['price_op'];
++              $attribute_value = $attribute['set_details'][$field_name]['options'][$selected_option]['price'];
++              $attribute_currency = $attribute['set_details'][$field_name]['options'][$selected_option]['currency_code'];
++
++              if ($price_op == 'plus_percent' || $price_op == 'minus_percent') {
++                // Calculate the amount to add or remove based on a percentage
++                // of the current line item price.
++                $percent = commerce_currency_amount_to_decimal($attribute_value, $attribute_currency) / 100;
++                $price = $line_item_wrapper->commerce_unit_price->amount->value() * $percent;
++                // Change the price_op value so that later logic recognizes
++                // the 'plus' or 'minus' operand
++                $price_op = $price_op == 'plus_percent' ? 'plus' : 'minus';
++              } else {
++                // Convert the price difference into the currency used by this
++                // line item
++                $price = commerce_currency_convert($attribute_value, $attribute_currency, $covert_to_currency);
++              }
+ 
+               if($price > 0){
+                 // If the attribute price must be calculated per order then
+@@ -84,7 +99,7 @@ function commerce_pricing_attributes_calculate_adjusment($line_item_wrapper){
+                   $price = $price/$quantity;
+                 }
+ 
+-                switch ($attribute['set_details'][$field_name]['options'][$selected_option]['price_op']) {
++                switch ($price_op) {
+                   case 'minus':
+                     $commerce_attribute_adjustment -= $price;
+                     break;

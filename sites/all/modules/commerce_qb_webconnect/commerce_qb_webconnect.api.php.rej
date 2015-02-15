@@ -1,0 +1,28 @@
+--- commerce_qb_webconnect.api.php
++++ commerce_qb_webconnect.api.php
+@@ -25,7 +25,7 @@
+         case 'add_sales_receipt':
+         case 'add_payment':
+           return variable_get('commerce_qb_webconnect_example_payment_method', '');
+-
++
+           break;
+       }
+ 
+@@ -159,11 +165,13 @@
+     'add_sales_receipt' => array(
+       'qbxml_callback' => 'commerce_qb_webconnect_add_sales_receipt_qbxml',
+       'unique_id_callback' => 'commerce_qb_webconnect_add_sales_receipt_unique_id',
+-      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
+-      'label' => t('Add sales receipt'),
++      'label_callback' => 'commerce_qb_webconnect_add_invoice_label',
++      'label' => t('Add sales receipt'),
+       'uri_callback' => 'commerce_qb_webconnect_add_invoice_uri',
+       'weight' => 0,
+-      'order_export' => true
++      'order_export' => true,
++      'return_callback' => '',
++      'file' => '',
+     ),
+   );
+ 

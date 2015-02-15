@@ -1,0 +1,27 @@
+diff --git a/modules/fontsquirrel/fontsquirrel.module b/modules/fontsquirrel/fontsquirrel.module
+index cdd9a9e..50a0829 100644
+--- a/modules/fontsquirrel/fontsquirrel.module
++++ b/modules/fontsquirrel/fontsquirrel.module
+@@ -134,9 +134,7 @@ function fontsquirrel_fontyourface_enable($font) {
+ 
+   $directory_location = file_build_uri('fontyourface/fontsquirrel/' . $metadata['path'] . '-fontfacekit');
+ 
+-  if (
+-    (!file_prepare_directory($directory_location))
+-  ) {
++  if (!file_prepare_directory($directory_location)) {
+ 
+     $zip_location = file_build_uri('fontyourface/fontsquirrel/' . $metadata['path'] . '-fontfacekit.zip');
+ 
+@@ -189,6 +187,11 @@ function fontsquirrel_fontyourface_enable($font) {
+           if (zip_entry_open($zip, $entry, 'r') && ($zip_entry_filesize = zip_entry_filesize($entry))) {
+ 
+             $entry_name = zip_entry_name($entry);
++            $inside_directory = dirname($entry_name);
++            if ($inside_directory !== '.') {
++              $inside_directory = $directory_location . '/' . $inside_directory;
++              file_prepare_directory($inside_directory, FILE_CREATE_DIRECTORY);
++            }
+             $data = zip_entry_read($entry, $zip_entry_filesize);
+             file_unmanaged_save_data($data, $directory_location . '/' . $entry_name, FILE_EXISTS_REPLACE);
+ 

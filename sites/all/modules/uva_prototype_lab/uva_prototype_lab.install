@@ -1,0 +1,25 @@
+<?php
+
+function uva_prototype_lab_schema_alter(&$schema) {
+    $schema['commerce_line_item']['fields']['volume_unit'] = array(
+        'description' => 'The units this line item uses for volume calculation.',
+        'type' => 'varchar',
+        'length' => '10',
+        'default' => 'cm',
+        'not null' => TRUE,
+    );
+}
+
+function uva_prototype_lab_install() {
+    db_add_field('commerce_line_item', 'volume_unit', array(
+        'description' => 'The units this line item uses for volume calculation.',
+        'type' => 'varchar',
+        'length' => '10',
+        'default' => 'cm',
+        'not null' => TRUE,
+    ));
+}
+
+function uva_prototype_lab_uninstall() {
+    db_drop_field('commerce_line_item', 'volume_unit');
+}

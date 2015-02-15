@@ -1,0 +1,2982 @@
+<?php
+
+/**
+ * @file
+ * Implementation of photos.module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function photos_menu() {
+  $items['photos/image/%'] = array(
+    'page callback' => 'photos_image_page',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageView', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.image.inc',
+  );
+  $items['photos/image/%/vote/%'] = array(
+    'page callback' => 'photos_image_vote',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageView', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.image.inc',
+  );
+  $items['photos/image/update'] = array(
+    'page callback' => 'photos_edit_update',
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+    'access arguments' => array('create photo'),
+  );
+  $items['photos/image/update/load'] = array(
+    'page callback' => 'photos_edit_update_load',
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+    'access arguments' => array('create photo'),
+  );
+  $items['photos/image/%/to_sub'] = array(
+    'title' => 'Add to sub-album',
+    'page callback' => 'photos_edit_to_sub',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageEdit', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  $items['photos/image/%/delete'] = array(
+    'page callback' => 'photos_edit_delete',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageDelete', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  $items['photos/image/%/edit'] = array(
+    'page callback' => '_photos_edit_page_single_image',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageEdit', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  if (variable_get('photos_access_photos', 1)) {
+    $items['photos/get/%/%'] = array(
+      'page callback' => 'photos_image_get',
+      'page arguments' => array(2, 3),
+      'access callback' => '_photos_access',
+      'access arguments' => array('imageView', 2),
+      'type' => MENU_CALLBACK,
+      'file' => 'inc/photos.image.inc',
+    );
+  }
+  $items['photos/album/%node'] = array(
+    'page callback' => 'photos_album_page',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('album', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.album.inc'
+  );
+  $items['photos/sub_album/%node'] = array(
+    'page callback' => 'photos_sub_album_page',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('subAlbum', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.album.inc'
+  );
+  $items['photos/album/%node/share'] = array(
+    'title' => 'Share code',
+    'page callback' => 'photos_album_share',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('album', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.album.inc'
+  );
+  $items['photos/sub_album/%node/share'] = array(
+    'title' => 'Share code',
+    'page callback' => 'photos_album_share',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('subAlbum', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.album.inc'
+  );
+  $items['node/%node/photos'] = array(
+    'title' => 'Images Management',
+    'page callback' => 'photos_edit_page',
+    'page arguments' => array(1),
+    'access callback' => '_photos_access',
+    'access arguments' => array('editAlbum', 1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  $items['node/%node/photos-sort'] = array(
+    'title' => 'Re-arrange',
+    'page callback' => 'photos_edit_sort_page',
+    'page arguments' => array(1),
+    'access callback' => '_photos_access',
+    'access arguments' => array('editAlbum', 1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  $items['node/%node/photos/cover/%'] = array(
+    'page callback' => 'photos_edit_cover',
+    'page arguments' => array(1, 4),
+    'access callback' => 'node_access',
+    'access arguments' => array('update', 1),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  $items['photos/zoom/%'] = array(
+    'page callback' => 'photos_down_page',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageView', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.down.inc',
+  );
+  $items['photos/zoom/%/original'] = array(
+    'page callback' => 'photos_down_page',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('imageOrig', 2),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.down.inc',
+  );
+  $items['admin/config/media/photos'] = array(
+    'title' => 'Album photos',
+    'description' => 'Configure global album photos settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('photos_admin_settings'),
+    'access arguments' => array('administer nodes'),
+    'file' => 'photos.admin.inc',
+    'file path' => drupal_get_path('module', 'photos') . '/inc'
+  );
+  $items['admin/config/media/photos/settings'] = array(
+    'title' => 'Photos',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['photos/data/user/%user'] = array(
+    'page callback' => 'photos_data_user_slide',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('view photo'),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.data.inc',
+  );
+  $items['photos/data/sub_album/%node/block_new'] = array(
+    'page callback' => 'photos_data_sub_block_slide',
+    'page arguments' => array(3, 4),
+    'access callback' => 'node_access',
+    'access arguments' => array('view', 3),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.data.inc',
+  );
+  $items['photos/data/sub_album/%node'] = array(
+    'page callback' => 'photos_data_album',
+    'page arguments' => array(3),
+    'access callback' => 'node_access',
+    'access arguments' => array('view', 3),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.data.inc',
+  );
+  $items['photos/data/album/%node'] = array(
+    'page callback' => 'photos_data_album',
+    'page arguments' => array(3),
+    'access callback' => 'node_access',
+    'access arguments' => array('view', 3),
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.data.inc',
+  );
+  $items['photos'] = array(
+    'title' => 'Album photos',
+    'page callback' => 'photos_page_default',
+    'access arguments' => array('view photo'),
+    'file' => 'inc/photos.page.inc',
+  );
+  $items['photos/image'] = array(
+    'title' => 'Latest images',
+    'page callback' => 'photos_page_image',
+    'access arguments' => array('view photo'),
+    'file' => 'inc/photos.page.inc',
+  );
+  $items['photos/album'] = array(
+    'title' => 'Latest albums',
+    'page callback' => 'photos_page_album',
+    'access arguments' => array('view photo'),
+    'file' => 'inc/photos.page.inc',
+  );
+  $items['photos/user/%user_uid_optional/image'] = array(
+    'title' => 'My images',
+    'title callback' => 'photos_page_title',
+    'title arguments' => array(2, t('images')),
+    'page callback' => 'photos_page_image',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('viewUser', 2),
+    'file' => 'inc/photos.page.inc',
+  );
+  $items['photos/user/%user_uid_optional/album'] = array(
+    'title' => 'My albums',
+    'title callback' => 'photos_page_title',
+    'title arguments' => array(2, t('albums')),
+    'page callback' => 'photos_page_album',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('viewUser', 2),
+    'file' => 'inc/photos.page.inc',
+  );
+  $items['photos/user/%user_uid_optional/album-sort'] = array(
+    'title' => 'Re-arrange My Albums',
+    'page callback' => 'photos_edit_sort_album_page',
+    'page arguments' => array(2),
+    'access callback' => '_photos_access',
+    'access arguments' => array('viewUser', 2), // @todo update argument
+    'type' => MENU_CALLBACK,
+    'file' => 'inc/photos.edit.inc',
+  );
+  if (variable_get('photos_slide', 0) && module_exists('dfgallery')) {
+    $items['photos/user/%user_uid_optional/slide'] = array(
+      'title' => 'My slide',
+      'title callback' => 'photos_page_title',
+      'title arguments' => array(2, t('slide')),
+      'page callback' => 'photos_page_slide',
+      'page arguments' => array(2),
+      'access callback' => '_photos_access',
+      'access arguments' => array('viewUser', 2),
+      'file' => 'inc/photos.data.inc',
+    );
+    $items['photos/album/%node/slide'] = array(
+      'page callback' => 'photos_album_slide',
+      'page arguments' => array(2),
+      'access callback' => '_photos_access',
+      'access arguments' => array('album', 2),
+      'type' => MENU_CALLBACK,
+      'file' => 'inc/photos.album.inc'
+    );
+    $items['photos/sub_album/%node/slide'] = array(
+      'page callback' => 'photos_album_slide',
+      'page arguments' => array(2),
+      'access callback' => '_photos_access',
+      'access arguments' => array('subAlbum', 2),
+      'type' => MENU_CALLBACK,
+      'file' => 'inc/photos.album.inc'
+    );
+  }
+  $items['photos/share'] = array(
+    'title' => 'Share code',
+    'page callback' => 'photos_share',
+    'access arguments' => array('create photo'),
+    'file' => 'inc/photos.page.inc',
+  );
+  $items['photos/upload'] = array(
+    'title' => 'Image upload',
+    'page callback' => 'photos_edit_upload',
+    'access arguments' => array('create photo'),
+    'file' => 'inc/photos.edit.inc',
+    'weight' => 9,
+  );
+  if (variable_get('photos_upzip', 0)) {
+    $items['photos/import'] = array(
+      'title' => 'Import ZIP',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('photos_admin_import'),
+      'access arguments' => array('administer nodes'),
+      'weight' => 10,
+      'file' => 'inc/photos.admin.inc',
+    );
+  }
+  $items['photos/ajax'] = array(
+    'title' => 'Photos ajax helper',
+    'page callback' => '_photos_ajax_helper',
+    'access arguments' => array('create photo'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Ajax helper, perform different ajax requests.
+ */
+function _photos_ajax_helper($action) {
+  switch ($action) {
+    case 'sort':
+      $nid = isset($_POST['pid']) ? $_POST['pid'] : 0;
+      $uid = isset($_POST['uid']) ? $_POST['uid'] : 0;
+      $type = isset($_POST['type']) ? $_POST['type'] : 0;
+      $new_order = isset($_POST['order']) ? $_POST['order'] : array();
+      module_load_include('inc', 'photos', 'inc/photos.edit');
+      $message = '';
+      if (!empty($new_order) && is_array($new_order)) {
+        if ($type == 'images') {
+          if ($nid) {
+            $message = photos_edit_sort_save($new_order, $nid);
+          }
+        }
+        elseif ($type == 'albums') {
+          if ($uid) {
+            // Save sort order for albums.
+            $message = photos_edit_sort_albums_save($new_order, $uid);
+          }
+        }
+        elseif ($type == 'sub_album') {
+            // Save sort order for images in sub-albums.
+          if ($nid) {
+            $message = photos_edit_sort_subalbums_save($new_order, $nid);
+          }
+        }
+      }
+      print $message;
+      drupal_exit();
+    break;
+  }
+  // If no action is set go to front page.
+  drupal_goto('<front>');
+}
+
+/**
+ * Photos page title.
+ */
+function photos_page_title($account, $str) {
+  global $user;
+  if ($account->uid <> $user->uid) {
+    return t('@name\'s !str', array('@name' => $account->name, '!str' => $str));
+  }
+  else {
+    return t('My !str', array('!str' => $str));
+  }
+}
+
+/**
+ * Implements hook_photos_access().
+ */
+function photos_photos_access() {
+  if (variable_get('photos_access_photos', 0)) {
+    if (arg(0) == 'photos' && arg(1) <> 'get' && is_numeric(arg(2))) {
+      switch (arg(1)) {
+        case 'album':
+        case 'sub-album':
+        case 'zoom':
+        case 'sub-slide':
+          return array(arg(2));
+        case 'image':
+          $nid = db_query("SELECT pid FROM {photos_image} WHERE fid = :fid", array(':fid' => arg(2)))->fetchField();
+          return array($nid);
+      }
+    }
+    if (arg(0) == 'photos' && arg(1) == 'data' && is_numeric(arg(3))) {
+      return array(arg(3));
+    }
+  }
+}
+
+/**
+ * Photos menu access callback.
+ *
+ * @param $value
+ *   $node, $user, $file->fid OR $node->nid.
+ */
+function _photos_access($type, $value, $id = 0) {
+  global $user;
+  switch ($type) {
+    case 'viewUser':
+      return ($value->uid && user_access('create photo', $value) || user_access('access user profiles') && user_access('view photo'));
+    case 'imageOrig':
+      if (!user_access('view original')) return FALSE;
+    case 'imageView':
+      // Value is fid, check if user can view this photo's album.
+      if ($user->uid == 1) return TRUE;
+      if (variable_get('photos_access_photos', 0)) {
+        $node = _photos_access_pass_type($value, 1);
+        if (isset($node['node']->viewid) && $node['node']->viewid <> 3) {
+          return node_access('view', (object)$node['node']);
+        }
+        elseif (isset($node['view']->pass)) {
+          if (isset($_SESSION[$node['view']->nid . '_' . session_id()]) && $node['view']->pass == $_SESSION[$node['view']->nid . '_' . session_id()] || !photos_access_pass_validate($node)) {
+            return TRUE;
+          }
+        }
+        else {
+          return user_access('view photo');
+        }
+      }
+      else {
+        return user_access('view photo');
+      }
+    break;
+    case 'album':
+      return ($value->type == 'photos') && node_access('view', $value);
+    case 'subAlbum':
+      return variable_get('photos_node_' . $value->type, 0) && node_access('view', $value);
+    case 'editAlbum':
+      if ($value->type == 'photos') {
+        return node_access('update', $value);
+      }
+      else {
+        return variable_get('photos_node_' . $value->type, 0) && node_access('update', $value);
+      }
+    case 'imageEdit':
+      if (!is_object($value)) {
+        $query = db_select('node', 'n');
+        $query->join('photos_image', 'p', 'p.pid = n.nid');
+        $query->fields('n', array('nid'))
+          ->condition('p.fid', $value);
+        $nid = $query->execute()->fetchField();
+        $value = node_load($nid);
+      }
+      return node_access('update', $value) || node_access('delete', $value);
+    case 'imageDelete':
+      if (!is_object($value)) {
+        $query = db_select('node', 'n');
+        $query->join('photos_image', 'p', 'p.pid = n.nid');
+        $query->fields('n', array('nid'))
+          ->condition('p.fid', $value);
+        $nid = $query->execute()->fetchField();
+        $value = node_load($nid);
+      }
+      return node_access('delete', $value);
+  }
+}
+
+/**
+ * Implements hook_file_download().
+ */
+function photos_file_download($uri) {
+  // Check if the file is controlled by the current module.
+  if (!file_prepare_directory($uri)) {
+    $uri = FALSE;
+  }
+  if (!user_access('view photo')) {
+    // Access to the file is denied.
+    return -1;
+  }
+  else {
+    $info = image_get_info($uri);
+    return array('Content-Type' => $info['mime_type']);
+  }
+}
+
+/**
+ * Implements hook_node_info().
+ */
+function photos_node_info() {
+  return array(
+    'photos' => array(
+      'name' => t('Album'),
+      'base' => 'photos',
+      'description' => 'Create new photo albums.',
+      'has_title' => TRUE,
+      'title_label' => t('Album name'),
+    )
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function photos_permission() {
+  return array(
+    'view photo' => array(
+      'title' => t('View photos')
+    ),
+    'create photo' => array(
+      'title' => t('Create photos')
+    ),
+    'edit own photo' => array(
+      'title' => t('Edit own photos'),
+    ),
+    'delete own photo' => array(
+      'title' => t('Delete own photos')
+    ),
+    'edit any photo' => array(
+      'title' => t('Edit any photo')
+    ),
+    'delete any photo' => array(
+      'title' => t('Delete any photo')
+    ),
+    'allowed to vote' => array(
+      'title' => t('Allowed to vote on photos')
+    ),
+    'view vote list' => array(
+      'title' => t('Allowed to view vote list')
+    ),
+    'view original' => array(
+      'title' => t('View original image'),
+    )
+  );
+}
+
+/**
+ * Implements hook_node_access().
+ */
+function photos_node_access($node, $op, $account) {
+  switch ($op) {
+    case 'create':
+      return user_access('create photo', $account);
+    case 'update':
+      return user_access('edit any photo', $account) || (user_access('edit own photo', $account) && ($account->uid == $node->uid)) ? TRUE : NULL;
+    break;
+    case 'delete':
+      return user_access('delete any photo', $account) || (user_access('delete own photo', $account) && ($account->uid == $node->uid)) ? TRUE : NULL;
+  }
+}
+
+/**
+ * Implements hook_form().
+ */
+function photos_form(&$node) {
+  require_once('inc/photos.form.inc');
+  return _photos_form($node);
+}
+
+/**
+ * Implements hook_node_load().
+ */
+function photos_node_load($nodes, $types) {
+  $info = array();
+  foreach ($nodes as $nid => $node) {
+    if ($node->type == 'photos') {
+      $query = db_select('photos_album')
+        ->fields('photos_album')
+        ->condition('pid', $node->nid);
+      $result = $query->execute();
+      foreach ($result as $a) {
+        if ($a->pid) {
+          // Check if album data is corrupt to prevent unserialize notice.
+          if ($a->data <> 'N;') $info['album'] = unserialize($a->data);
+          $info['album']['pid'] = $a->pid;
+          $info['album']['count'] = $a->count;
+          if ($a->fid && ($image = db_query('SELECT * FROM {file_managed} WHERE fid = :fid', array(':fid' => $a->fid))->fetchObject())) {
+            $image = photos_get_info(0, $image);
+            $info['album']['cover']['fid'] = $a->fid;
+            $thumb = variable_get('photos_title_0', FALSE);
+            $info['album']['cover']['url'] = $image->uri;
+            $title = check_plain($node->title);
+            $style_name = variable_get('photos_cover_imagesize', 'thumbnail');
+            $cover_view = theme('image_style', array(
+              'style_name' => $style_name,
+              'path' => $image->uri,
+              'alt' => $title,
+              'title' => $title
+            ));
+            $info['album']['cover']['view'] = l($cover_view, 'photos/album/' . $node->nid, array(
+              'html' => TRUE,
+              'attributes' => array('title' => $title)
+            ));
+          }
+          else {
+            $query = db_select('file_managed', 'f');
+            $query->join('photos_image', 'p', 'p.fid = f.fid');
+            $query->fields('f');
+            $query->condition('p.pid', $node->nid);
+            $image = $query->execute()->fetchObject();
+            if (isset($image->fid)) {
+              $image = photos_get_info($image->fid, $image);
+              $thumb = variable_get('photos_display_list_imagesize', 'thumbnail');
+              $info['album']['cover']['url'] = $image->uri;
+              $info['album']['cover']['fid'] = $image->fid;
+              $title = check_plain($node->title);
+              $style_name = variable_get('photos_cover_imagesize', 'thumbnail');
+              $cover_view = theme('image_style', array(
+                'style_name' => $style_name,
+                'path' => $image->uri,
+                'alt' => $title,
+                'title' => $title
+              ));
+              $info['album']['cover']['view'] = l($cover_view, 'photos/album/' . $node->nid, array(
+                'html' => TRUE,
+                'attributes' => array('title' => $title)
+              ));
+            }
+          }
+          $nodes[$nid]->album = $info['album'];
+        }
+      }
+    }
+
+    if (variable_get('photos_node_' . $node->type, 0)) {
+      $query = db_select('photos_count', 'c')
+        ->fields('c', array('cid', 'value'))
+        ->condition('c.cid', $node->nid)
+        ->condition('c.type', 'node_node');
+      $result = $query->execute();
+      foreach ($result as $photo) {
+        if ($photo->cid) {
+          $nodes[$nid]->subalbum['count'] = $photo->value;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function photos_node_view($node, $view_mode, $langcode) {
+  if ($node->type == 'photos') {
+    global $user;
+    $display_types = array('none', 'cover', 'thumbnails', 'coverthumbs');
+    switch ($view_mode) {
+      case 'full':
+        $default_display = variable_get('photos_display_page_display', 1);
+        $display = isset($node->album['page_display']) ? $node->album['page_display'] : $default_display;
+        $album = _photos_node_view($node, $display, $view_mode);
+        $node->content['album-' . $display_types[$display]] = array(
+          '#markup' => $album
+        );
+      break;
+      case 'teaser':
+        $default_display = variable_get('photos_display_teaser_display', 1);
+        $display = isset($node->album['teaser_display']) ? $node->album['teaser_display'] : $default_display;
+        $album = _photos_node_view($node, $display, $view_mode);
+        $node->content['album-' . $display_types[$display]] = array(
+          '#markup' => $album
+        );
+      break;
+    }
+  }
+
+  if ($node->type == 'photos' || variable_get('photos_node_' . $node->type, 0)) {
+    // Links.
+    $links = array();
+    if (user_access('view photo') && (isset($node->subalbum['count']) || isset($node->album['count']))) {
+      if ($node->type == 'photos') {
+        $title = t('Album view');
+        $type = 'album';
+      }
+      else {
+        $title = t('Sub-Album view');
+        $type = 'sub_album';
+      }
+      $count = 0;
+      if (!empty($node->subalbum['count'])) {
+        $count = $node->subalbum['count'];
+      }
+      elseif (!empty($node->album['count'])) {
+        $count = $node->album['count'];
+      }
+      if ($count <> 0) {
+        $links['photos_album'] = array(
+          'title' => $title,
+          'href' => 'photos/' . $type . '/' . $node->nid,
+          'attributes' => array('title' => t('A total of !count images', array('!count' => $count))),
+        );
+        if (variable_get('photos_slide', 0) && module_exists('dfgallery')) {
+          $links['photos_slide'] = array(
+            'title' => t('Slideshow'),
+            'href' => 'photos/' . $type . '/' . $node->nid . '/slide',
+          );
+        }
+      }
+    }
+    $node->content['links']['photos'] = array(
+      '#theme' => 'links__node__photos',
+      '#links' => $links,
+      '#attributes' => array('class' => array('links', 'inline')),
+    );
+  }
+}
+
+/**
+ * Page and Teaser display settings.
+ */
+function _photos_node_view($node, $display, $view_mode) {
+  $album = '';
+  if ($display <> 0) {
+    $default_order = variable_get('photos_display_imageorder', 'timestamp|desc');
+    $order = explode('|', (isset($node->album['imageorder']) ? $node->album['imageorder'] : $default_order));
+    $order = _photos_order_value_change($order[0], $order[1]);
+    $default_style = variable_get('photos_display_' . $view_mode . '_imagesize', 'thumbnail');
+    $style_name = isset($node->album[$view_mode . '_imagesize']) ? $node->album[$view_mode . '_imagesize'] : $default_style;
+  }
+  switch ($display) {
+    case 0:
+      // Display none.
+    break;
+    case 1:
+      // Display cover.
+      $album = '';
+      if (isset($node->album['cover'])) {
+        if (FALSE && isset($node->album['cover']['fid'])) {
+          $album .= photos_get_info($node->album['cover']['fid'], 0, array(
+            'href' => 'photos/album/' . $node->nid,
+            'style_name' => $style_name,
+            'colorbox' => TRUE,
+            'pid' => $node->nid
+          ));
+        }
+        else {
+          // URL backwards compatibility -- @todo remove in D8 cleanup.
+          $image = new stdClass();
+          $image->view = theme('image', array(
+            'style_name' => $style_name,
+            'path' => $node->album['cover']['url']
+          ));
+          $image->href = 'photos/album/' . $node->nid;
+          $image->uri = $node->album['cover']['url'];
+          $image->pid = $node->nid;
+          $image->title = $node->title;
+          $album .= theme('photos_imagehtml', array('image' => $image, 'style_name' => $style_name));
+        }
+      }
+    break;
+    case 2:
+      // Display thumbnails.
+      $column = (isset($_GET['field'])) ? check_plain($_GET['field']) : 0;
+      $sort = (isset($_GET['sort'])) ? check_plain($_GET['sort']) : 0;
+      $limit = isset($node->album[$view_mode . '_viewnum']) ? $node->album[$view_mode . '_viewnum'] : variable_get('photos_display_' . $view_mode . '_viewnum', 10);
+      $term = _photos_order_value($column, $sort, $limit, $order);
+      $query = db_select('file_managed', 'f');
+      $query->join('photos_image', 'p', 'p.fid = f.fid');
+      $query->join('users', 'u', 'u.uid = f.uid');
+      $query->fields('f', array('uri', 'filemime', 'timestamp', 'filename', 'filesize'))
+        ->fields('p')
+        ->fields('u', array('uid', 'name'));
+      $query->condition('p.pid', $node->nid);
+      $query->orderBy($term['order']['column'], $term['order']['sort']);
+      $query->range(0, $term['limit']);
+      $result = $query->execute();
+
+      $i = 0;
+      // Necessary when upgrading from D6 to D7.
+      $image_styles = image_style_options(FALSE);
+      if (!isset($image_styles[$style_name])) {
+        $style_name = variable_get('photos_display_teaser_imagesize', 'thumbnail');
+      }
+      $album = '';
+      // Thumbnails.
+      foreach ($result as $data) {
+        $album .= photos_get_info(0, $data, array(
+          'href' => 'photos/image/' . $data->fid,
+          'style_name' => $style_name,
+          'colorbox' => TRUE,
+          'pid' => $node->nid
+        ));
+        ++$i;
+      }
+      // More link.
+      if ($i >= $limit) $album .= theme('more_link', array(
+        'url' => 'photos/album/' . $node->nid,
+        'title' => t('Album view')
+      ));
+      $node->content['album-thumbnails'] = array(
+        '#markup' => $album
+      );
+    break;
+  }
+  return $album;
+}
+
+/**
+ * Implements hook_node_validate().
+ */
+function photos_node_validate($node, $form, &$form_state) {
+  if ($node->type == 'photos') {
+    $t = photos_user_count();
+    (isset($t['rest']) && arg(2) <> 'edit') ? form_set_error('title', t('You cannot create more albums.')) : NULL;
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function photos_node_insert($node) {
+  if ($node->type == 'photos') {
+    $node_album = serialize($node->album);
+    db_insert('photos_album')
+      ->fields(array(
+        'pid' => $node->nid,
+        'data' => $node_album,
+        'fid' => 0,
+        'count' => 0
+      ))
+      ->execute();
+    photos_set_count('user_album', $node->uid);
+  }
+}
+
+/**
+ * Implements hook_node_type_delete().
+ */
+function photos_node_type_delete($info) {
+  variable_del('photos_node_' . $info->type);
+  variable_del('photos_share_' . $info->type);
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function photos_node_update($node) {
+  if ($node->type == 'photos') {
+    db_update('photos_album')
+      ->fields(array(
+        'data' => serialize($node->album)
+      ))
+      ->condition('pid', $node->nid)
+      ->execute();
+    photos_set_count('user_album', $node->uid);
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function photos_node_delete($node) {
+  if ($node->type == 'photos') {
+    if ($node->album['count'] || !variable_get('photos_user_count_cron', 0)) {
+      $result = db_query('SELECT f.fid, f.uri FROM {file_managed} f INNER JOIN {photos_image} p ON f.fid = p.fid WHERE p.pid = :nid',
+        array(':nid' => $node->nid));
+
+      foreach ($result as $file) {
+        $msg[] = photos_file_del($file->fid, $file->uri);
+      }
+      if (isset($msg[0])) {
+        photos_set_count('user_image', $node->uid);
+        drupal_set_message(t('%count images are deleted.', array('%count' => COUNT($msg))));
+      }
+    }
+    db_query("DELETE FROM {photos_album} WHERE pid = :nid", array(':nid' => $node->nid));
+    photos_set_count('user_album', $node->uid);
+  }
+  if (variable_get('photos_node_' . $node->type, 0)) {
+    db_query("DELETE FROM {photos_node} WHERE nid = :nid", array(':nid' => $node->nid));
+    db_query("DELETE FROM {photos_count} WHERE cid = :nid AND type = :type", array(':nid' => $node->nid, ':type' => 'node_node'));
+  }
+}
+
+/**
+ * Implements hook_user_insert().
+ */
+function photos_user_insert(&$edit, $account, $category) {
+  db_query("INSERT INTO {photos_count} (cid, changed, type, value) VALUES (:uid, 0, 'user_album', 0), (:uid, 0, 'user_image', 0)",
+    array(':uid' => $account->uid));
+}
+
+/**
+ * Implements hook_user_load().
+ */
+function photos_user_load($users) {
+  foreach ($users as $account) {
+    $account->album['album']['count'] = photos_get_count('user_album', $account->uid);
+    $account->album['image']['count'] = photos_get_count('user_image', $account->uid);
+  }
+}
+
+/**
+ * Implements hook_user_view().
+ */
+function photos_user_view($account, $view_mode, $langcode) {
+  global $user;
+  if (user_access('view photo') || user_access('create photo', $account)) {
+    $item = array();
+    if ($account->album['album']['count']) {
+      $item[] = l(t('There are !a albums in total', array('!a' => $account->album['album']['count'])), 'photos/user/' . $account->uid . '/album');
+    }
+    elseif ($account->uid == $user->uid) {
+      $item[] = t('No albums yet') . ', ' . l(t('Create album'), 'node/add/photos');
+    }
+    if ($account->album['image']['count']) {
+      $item[] = l(t('There are !a images in total', array('!a' => $account->album['image']['count'])), 'photos/user/' . $account->uid . '/image');
+    }
+    elseif ($account->uid == $user->uid) {
+      $item[] = t('No images yet') . ', ' . l(t('Upload images'), 'photos/upload');
+    }
+    if (variable_get('photos_slide', 0) && $account->album['image']['count'] && module_exists('dfgallery')) {
+      $item[] = l(t('Slideshow'), 'photos/user/' . $account->uid . '/slide');
+    }
+    if (isset($item[0])) {
+      $account->content['summary']['photos'] =  array(
+        '#type' => 'user_profile_item',
+        '#title' => t('Album image'),
+        '#markup' => theme('item_list', array('items' => $item)),
+        '#attributes' => array('class' => 'photos'),
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_comment_view().
+ */
+function photos_comment_view($comment, $view_mode, $langcode) {
+  if ($comment->node_type == 'comment_node_photos' && arg(0) <> 'photos') {
+    $fid = db_select('photos_comment', 'v')
+      ->fields('v', array('fid'))
+      ->condition('v.cid', $comment->cid)
+      ->execute()->fetchField();
+    if (!empty($fid)) {
+      $comment->content['links']['comment']['#links']['photos-image'] = array(
+        'title' => t('view image'),
+        'href' => 'photos/image/' . $fid,
+        'fragment' => 'comment-' . $comment->cid
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_comment_delete().
+ */
+function photos_comment_delete($comment) {
+  $fid = db_select('photos_comment', 'v')
+    ->fields('v', array('fid'))
+    ->condition('v.cid', $comment->cid)
+    ->execute()->fetchField();
+  db_delete('photos_comment')
+    ->condition('cid', $comment->cid)
+    ->execute();
+  // Update image comment count.
+  db_query("UPDATE {photos_image} SET comcount = (SELECT COUNT(fid) FROM {photos_comment} WHERE fid = :fid) WHERE fid = :fid",
+      array(':fid' => $fid));
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function photos_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'node_type_form' && isset($form['#node_type']) && arg(3) <> 'photos') {
+    $form['photos'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Sub-Album settings'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#group' => 'additional_settings'
+    );
+    $form['photos']['photos_node'] = array(
+      '#type' => 'radios',
+      '#title' => t('Sub-Album'),
+      '#default_value' => variable_get('photos_node_' . $form['#node_type']->type, 0),
+      '#options' => array(t('Disabled'), t('Enabled')),
+      '#description' => t('Node will become a sub-album, you can add images from other albums to this node.'),
+    );
+    $form['photos']['photos_share'] = array(
+      '#type' => 'radios',
+      '#title' => t('Reference'),
+      '#default_value' => variable_get('photos_share_' . $form['#node_type']->type, 0),
+      '#options' => array(t('Disabled'), t('Enabled')),
+      '#description' => t('Displays a shortcut to the image share code that can be copied and pasted.'),
+    );
+  }
+
+  if ($form_id == 'comment_node_photos_form' && variable_get('photos_comment', 0) || $form_id == 'comment_form' && variable_get('photos_comment', 0)) {
+    if (isset($form_state['input']['photos_fid'])) {
+      $fid = $form_state['input']['photos_fid'];
+    }
+    elseif (isset($form_state['input']['fid'])) {
+      $fid = $form_state['input']['fid'];
+    }
+    elseif (arg(0) == 'photos' && is_numeric(arg(2))) {
+      $fid = arg(2);
+    }
+    elseif (arg(1) == 'reply' && is_numeric(arg(3))) {
+      $fid = db_query('SELECT fid FROM {photos_comment} WHERE cid = :cid',
+        array(':cid' => arg(3)))->fetchField();
+    }
+    if (isset($fid)) {
+      $form['fid'] = array(
+        '#type' => 'hidden',
+        '#value' => $fid,
+      );
+      $form['comment']['photos_fid'] = array(
+        '#type' => 'hidden',
+        '#value' => $fid,
+      );
+    }
+    $form['#submit'][] = 'photos_comment_form_submit';
+  }
+
+  if (isset($form['type']) && isset($form['#node']) && user_access('view photo')) {
+    $node = $form['#node'];
+    if (variable_get('photos_share_' . $node->type, 0)) {
+      $form['photos_share'] = array(
+        '#title' => t('Insert image'),
+        '#weight' => 0,
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+      );
+      $form['photos_share']['share']['#markup'] = '<div id="potos-colorbox">' .
+        l(t('Insert an existing image'), 'photos/share', array(
+          'query' => array(
+            'iframe' => 'true',
+            'height' => 650,
+            'width' => 850
+          ),
+          'attributes' => array(
+            'title' => t('Choose an image from my albums to insert into the node'),
+            'class' => array('colorbox-load')
+          )
+        )) . ' (' .
+        l(t('Open a new window'), 'photos/share', array(
+          'attributes' => array(
+            'title' => t('Choose an image from my albums to insert into the node'),
+            'target' => '_blank'
+          )
+        )) . ')</div>';
+    }
+  }
+
+  if ($form_id == 'photos_node_form') {
+    $form['actions']['submit']['#submit'][] = 'photos_form_redirect';
+  }
+}
+
+/**
+ * Redirect photos form to image management page.
+ */
+function photos_form_redirect($form, &$form_state) {
+  $form_state['redirect'] = 'node/' . $form_state['nid'] . '/photos';
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function photos_comment_form_submit($form, &$form_state) {
+  if (!empty($form_state['values']['photos_fid']) || !empty($form_state['input']['photos_fid'])) {
+    $fid = isset($form_state['values']['photos_fid']) ? $form_state['values']['photos_fid'] : $form_state['input']['photos_fid'];
+    $comment = $form_state['comment'];
+    // Record comment in photos_comment.
+    db_insert('photos_comment')
+      ->fields(array(
+        'fid' => $fid,
+        'cid' => $comment->cid
+      ))
+      ->execute();
+    db_query("UPDATE {photos_image} SET comcount = (SELECT COUNT(fid) FROM {photos_comment} WHERE fid = :fid) WHERE fid = :fid",
+      array(':fid' => $fid));
+
+    if (isset($form_state['complete form']['#node'])) {
+      $node = $form_state['complete form']['#node'];
+    }
+    else {
+      $node = node_load($form_state['values']['nid']);
+    }
+    $query = array();
+    // Find the current display page for this comment.
+    $page = comment_get_display_page($comment->cid, $node->type);
+    if ($page > 0) {
+      $query['page'] = $page;
+    }
+    // Redirect to the newly posted comment.
+    $redirect = array('photos/image/' . $fid, array(
+        'query' => $query,
+        'fragment' => 'comment-' . $comment->cid,
+      ));
+    $form_state['redirect'] = $redirect;
+  }
+}
+
+/**
+ * Photos image view pager block.
+ */
+function photos_image_pager($fid, $id, $type = 'pid') {
+  $query = db_select('file_managed', 'f');
+  $query->join('photos_image', 'p', 'f.fid = p.fid');
+  $query->fields('p', array('pid'))
+    ->fields('f', array('fid', 'uri', 'filename'));
+
+  // Default order by fid.
+  $order = array('column' => 'f.fid', 'sort' => 'DESC');
+  if ($type == 'pid') {
+    // Viewing album.
+    // Order images by album settings.
+    $album_data = db_query('SELECT data FROM {photos_album} WHERE pid = :pid', array(':pid' => $id))->fetchField();
+    $album_data = unserialize($album_data);
+    $default_order = variable_get('photos_display_imageorder', 'weight|asc');
+    $image_order = isset($album_data['imageorder']) ? $album_data['imageorder'] : $default_order;
+    $order = explode('|', $image_order);
+    $order = _photos_order_value_change($order[0], $order[1]);
+    $query->condition('p.pid', $id);
+  }
+  elseif ($type == 'uid') {
+    // Viewing all user images.
+    $query->condition('f.uid', $id);
+  }
+  elseif ($type == 'sub') {
+    // Viewing sub-album.
+    // Default order by wid.
+    $order = array('column' => 's.wid', 'sort' => 'ASC');
+    $query->join('photos_node', 's', 's.fid = p.fid');
+    $query->condition('s.nid', $id);
+  }
+  else {
+    // Show all.
+  }
+  $query->orderBy($order['column'], $order['sort']);
+  $result = $query->execute();
+
+  $stop = $t['prev'] = $t['next'] = 0;
+  $num = 0;
+  foreach ($result as $image) {
+    $num++;
+    if ($stop == 1) {
+      $t['next'] = $image;
+      $t['next_view'] = photos_get_info(0, $t['next'], array('style_name' => variable_get('photos_pager_imagesize', 'thumbnail')));
+      if ($type == 'uid') {
+        // User next image.
+        $t['next_url'] = url('photos/user/' . $id . '/image/' . $image->fid);
+      }
+      elseif ($type == 'sub') {
+        // Sub-album next image.
+        $t['next_url'] = url('photos/image/' . $image->fid, array('query' => array('photos_sub' => $id)));
+      }
+      else {
+        // Next image.
+        $t['next_url'] = url('photos/image/' . $image->fid);
+      }
+      break;
+    }
+    if ($image->fid == $fid) {
+      $t['current'] = $image;
+      $t['current_view'] = photos_get_info(0, $t['current'], array('style_name' => variable_get('photos_pager_imagesize', 'thumbnail')));
+      $stop = 1;
+    }
+    else {
+      $t['prev'] = $image;
+    }
+  }
+  if ($t['prev']) {
+    $t['prev_view'] = photos_get_info(0, $t['prev'], array('style_name' => variable_get('photos_pager_imagesize', 'thumbnail')));
+    if ($type == 'uid') {
+      // User previous image.
+      $t['prev_url'] = url('photos/user/' . $id . '/image/' . $t['prev']->fid);
+    }
+    elseif ($type == 'sub') {
+      // Sub-album previous image.
+      $t['prev_url'] = url('photos/image/' . $t['prev']->fid, array('query' => array('photos_sub' => $id)));
+    }
+    else {
+      // Previous image.
+      $t['prev_url'] = url('photos/image/' . $t['prev']->fid);
+    }
+  }
+
+  return $t;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function photos_block_info() {
+  $blocks = array(
+    'latest_images' => array(
+      'info' => t('Latest images')
+    ),
+    'user_images' => array(
+      'info' => t('User\'s images')
+    ),
+    'information_pager' => array(
+      'info' => t('Photo information'),
+      'cache' => DRUPAL_NO_CACHE
+    ),
+    'random_images' => array(
+      'info' => t('Random images')
+    )
+  );
+
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_configure().
+ */
+function photos_block_configure($delta = '') {
+  switch ($delta) {
+    case 'information_pager':
+      $form['photos_block_num_information_pager'] = array('#type' => 'radios', '#title' => t('Show sub-album info'), '#default_value' => variable_get('photos_block_num_information_pager', 1), '#options' => array(t('Disabled'), t('Enabled')));
+    break;
+    default:
+      $num = drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40));
+      $form['photos_block_num_' . $delta] = array('#type' => 'select', '#title' => t('Show several images'), '#default_value' => variable_get('photos_block_num_' . $delta, 10), '#options' => $num);
+    break;
+  }
+
+  return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function photos_block_save($delta = '', $edit = array()) {
+  variable_set('photos_block_num_' . $delta, $edit['photos_block_num_' . $delta]);
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function photos_block_view($delta = '') {
+  $block = array();
+  $count = variable_get('photos_block_num_' . $delta, 10);
+  switch ($delta) {
+    case 'latest_images':
+      if (user_access('view photo') && $content = _photos_block_image('latest', $count, 'photos/image')) {
+        $block['subject'] = t('Latest images');
+        $block['content'] = $content;
+      }
+    return $block;
+    case 'user_images':
+      if (arg(0) == 'photos') {
+        switch (arg(1)) {
+          case 'image':
+            $uid = db_query('SELECT uid FROM {file_managed} WHERE fid = :uid',
+              array(':uid' => arg(2)))->fetchField();
+          break;
+          case 'user':
+            $uid = arg(2);
+        }
+      }
+      if (arg(0) == 'node' && is_numeric(arg(1))) {
+        $uid = db_query('SELECT uid FROM {node} WHERE nid = :nid',
+          array(':nid' => arg(1)))->fetchField();
+      }
+      if (!isset($uid)) {
+        global $user;
+        $uid = $user->uid;
+      }
+      if ($uid && ($content = _photos_block_image('user', $count, 'photos/user/' . $uid . '/image', $uid))) {
+        $block['subject'] = t('%name\'s images', array('%name' => $content[1]));
+        $block['content'] = $content[0];
+      }
+    return $block;
+    case 'information_pager':
+      // @todo add support for sub album pager.
+      if (arg(0) == 'photos' && arg(1) == 'image' && is_numeric(arg(2)) && isset($_GET['photos_sub'])) {
+        $fid = arg(2);
+        $pager_type = 'sub';
+        $pager_id = (int)$_GET['photos_sub'];
+      }
+      elseif (arg(0) == 'photos' && arg(1) == 'image' && is_numeric(arg(2))) {
+        $fid = arg(2);
+        $pager_type = 'pid';
+      }
+      elseif (arg(0) == 'photos' && arg(1) == 'user' && is_numeric(arg(2)) && is_numeric(arg(4))) {
+        $fid = arg(4);
+        $uid = arg(2);
+        $pager_id = arg(2);
+        $pager_type = 'uid';
+      }
+
+      if (isset($fid)) {
+        $query = db_select('photos_image', 'p');
+        $query->join('file_managed', 'f', 'f.fid = p.fid');
+        $query->join('node', 'n', 'n.nid = p.pid');
+        $query->join('users', 'u', 'f.uid = u.uid');
+        $query->fields('p', array('count', 'comcount', 'exif', 'des'))
+          ->fields('f', array('uri', 'timestamp', 'filemime', 'fid'))
+          ->fields('n', array('nid', 'title'))
+          ->fields('u', array('name', 'picture', 'uid'))
+          ->condition('p.fid', $fid);
+        $query->addTag('node_access');
+        $image = $query->execute()->fetchObject();
+        if ($image) {
+          if ($pager_type == 'pid') {
+            $pager_id = $image->nid;
+          }
+          $image->pager = photos_image_pager($fid, $pager_id, $pager_type);
+          $item = array();
+          if (variable_get('photos_print_sizes', 0) < 2) {
+            $all_sizes_link = variable_get('photos_print_sizes', 0);
+            if ($all_sizes_link < 2) {
+              // Display full page or colorbox.
+              $colorbox = array();
+              if ($all_sizes_link == 1) {
+                $colorbox = array(
+                  'query' => array(
+                    'iframe' => 'true',
+                    'height' => 650,
+                    'width' => 850
+                  ),
+                  'attributes' => array(
+                    'class' => array('colorbox-load')
+                  )
+                );
+              }
+              $item[] = l(t('Copy image to share code'), 'photos/zoom/' . $image->fid, $colorbox);
+            }
+          }
+          if ($image->exif && variable_get('photos_exif', 0)) {
+            $item[] = l(t('View image Exif information'), 'photos/zoom/' . $image->fid . '/exif', array(
+              'query' => array(
+                'iframe' => 'true',
+                'height' => 650,
+                'width' => 850
+              ),
+              'attributes' => array(
+                'class' => array('colorbox-load')
+              )
+            ));
+          }
+          if (variable_get('photos_slide', 0) && module_exists('dfgallery')) {
+            $image->slide_url = url('photos/album/' . $image->nid . '/slide');
+          }
+          $image->links = theme('item_list', array('items' => $item));
+          if (variable_get('photos_block_num_information_pager', 0)) {
+            $query = db_select('node', 'n');
+            $query->join('photos_node', 'a', 'a.nid = n.nid');
+            $query->join('users', 'u', 'u.uid = n.uid');
+            $query->fields('n', array('nid', 'title'))
+              ->fields('u', array('uid', 'name'))
+              ->condition('a.fid', $image->fid)
+              ->orderBy('n.nid', 'DESC')
+              ->limit(10);
+            $result = $query->execute();
+            foreach ($result as $node) {
+              $image->sub_album[$node->nid] = $node;
+              $image->sub_album[$node->nid]['geturl'] = url('photos/data/sub_album/' . $node->nid . '/block_new/json.json');
+              $image->sub_album[$node->nid]['url'] = url('photos/sub_album/' . $node->nid);
+              $image->sub_album[$node->nid]['user'] = $image->name;
+              $image->sub_album[$node->nid]['info'] = t('!name in !time to create', array('!name' => $node['name'], '!time' => format_date($image->timestamp, 'small')));
+            }
+          }
+          $block['subject'] = t('Photo information');
+          $block['content'] = theme('photos_imageblock', array('image' => $image));
+        }
+      }
+    return $block;
+    case 'random_images':
+      if (user_access('view photo') && $content = _photos_block_image('rand', $count)) {
+        $block['subject'] = t('Random images');
+        $block['content'] = $content;
+      }
+    return $block;
+  }
+}
+
+/**
+ * Photos - extends block view.
+ */
+function _photos_block_image($type, $limit, $url = 'photos/image', $uid = 0, $sort = array('column' => 'f.fid', 'order' => 'DESC')) {
+  $query = db_select('file_managed', 'f');
+  $query->join('photos_image', 'p', 'p.fid = f.fid');
+  $query->join('node', 'n', 'n.nid = p.pid');
+  $query->join('users', 'u', 'u.uid = f.uid');
+  $query->fields('f', array('uri', 'filemime', 'timestamp', 'filename'))
+    ->fields('u', array('uid', 'name'))
+    ->fields('n', array('nid'))
+    ->fields('p');
+
+  if ($type == 'user') {
+    $query->condition('f.uid', $uid);
+  }
+
+  if ($type == 'rand') {
+    $query->orderRandom();
+  }
+  else {
+    $query->orderBy($sort['column'], $sort['order']);
+  }
+  $query->range(0, $limit);
+  $query->addTag('node_access');
+  $result = $query->execute();
+
+  $view = array();
+  $images = array();
+  foreach ($result as $image) {
+    $image = photos_get_info(0, $image);
+    $image->href = $url . '/' . $image->fid;
+    $images[] = $image;
+  }
+  if (isset($images[0]->fid)) {
+    $content = theme('photos_block', array('images' => $images, 'type' => 'image'));
+    if ($url && count($image) >= $limit) {
+      $content .= theme('more_link', array('url' => url($url), 'title' => t('View more')));
+    }
+    if ($type == 'user') {
+      return array($content, $images[0]->name);
+    }
+    else {
+      return $content;
+    }
+  }
+}
+
+/**
+ * User photos.
+ */
+function _photos_block_album($type, $limit, $url = 0, $uid = 0, $sort = ' n.nid DESC') {
+  $query = db_select('photos_album', 'p');
+  $query->join('node', 'n', 'n.nid = p.pid');
+  $query->join('users', 'u', 'u.uid = n.uid');
+  $query->fields('p', array('count', 'fid'))
+    ->fields('n', array('nid', 'title'))
+    ->fields('u', array('uid', 'name'));
+
+  if ($type == 'user') {
+    $query->condition('n.uid', $uid);
+  }
+  if ($type == 'rand') {
+    $query->orderRandom();
+  }
+  else {
+    $query->orderBy('n.nid', 'DESC');
+  }
+  $query->range(0, $limit);
+  $query->addTag('node_access');
+  $result = $query->execute();
+
+  $i = 0;
+  foreach ($result as $node) {
+    if ($node->fid) {
+      $view = photos_get_info($node->fid, 0, array('href' => 'photos/album/' . $node->nid, 'filename' => $node->title));
+    }
+    else {
+      $query = db_select('file_managed', 'f');
+      $query->join('photos_image', 'p', 'p.fid = f.fid');
+      $query->fields('f', array('fid', 'uri', 'filename'));
+      $query->condition('p.pid', $node->nid);
+      $query->orderBy('f.fid', 'DESC');
+      $image = $query->execute()->fetchObject();
+      if (isset($image->fid)) {
+        $view = photos_get_info($image->fid, $image, array('href' => 'photos/album/' . $node->nid, 'filename' => $node->title));
+      }
+      else {
+        $view = '';
+      }
+    }
+    $album[] = array('node' => $node, 'view' => $view);
+    ++$i;
+  }
+  if ($i) {
+    $content = theme('photos_block', array('images' => $album, 'type' => 'album'));
+    if ($url && $i >= $limit) {
+      $content .= theme('more_link', array('url' => url($url), 'title' => t('View more')));
+    }
+    if ($type == 'user') {
+      return array($content, $album[0]['node']->name);
+    }
+    else {
+      return $content;
+    }
+  }
+}
+
+/**
+ * Theme photos block.
+ */
+function photos_theme_photos_block($variables) {
+  $type = $variables['type'];
+  $images = $variables['images'];
+  $items = array();
+  $style_name = variable_get('photos_thumb_imagesize', 'thumbnail');
+  switch ($type) {
+    case 'image':
+      foreach ($images as $image) {
+        $items[] = theme('photos_imagehtml', array('image' => $image, 'style_name' => $style_name));
+      }
+    break;
+    case 'album':
+      foreach ($images as $album) {
+        $op['attributes']['title'] = $album['node']->count ? t('A total of @title images', array('@title' => $album['node']->count)) : t('Album is empty');
+        $items[] = $album['view'] . '<div class="photos_block_album_title">' . l($album['node']->title, 'node/' . $album['node']->nid, $op) . '</div>';
+      }
+  }
+
+  return theme('item_list', array('items' => $items));
+}
+
+/**
+ * Photos - image removal.
+ */
+function photos_file_del($fid, $filepath = 0, $count = 0) {
+  if (!$filepath) {
+    if ($count) {
+      $file = file_load($fid);
+      $file->pid = db_select('photos_image', 'p')
+        ->fields('p', array('pid'))
+        ->condition('fid', $fid)
+        ->execute()->fetchField();
+      $filepath = $file->uri;
+    }
+    else {
+      $filepath = db_query('SELECT uri FROM {file_managed} WHERE fid = :fid', array(':fid' => $fid))->fetchField();
+    }
+  }
+  if ($filepath) {
+    if (variable_get('photos_comment', 0)) {
+      $result = db_select('photos_comment', 'v')
+        ->fields('v', array('cid'))
+        ->condition('v.fid', $fid)
+        ->execute();
+      foreach ($result as $cids) {
+        comment_delete($cids->cid);
+      }
+    }
+    db_delete('photos_image')
+      ->condition('fid', $fid)
+      ->execute();
+    db_delete('photos_node')
+      ->condition('fid', $fid)
+      ->execute();
+    db_delete('photos_comment')
+      ->condition('fid', $fid)
+      ->execute();
+    if ($count) {
+      photos_set_count('node_node', $file->pid);
+      photos_set_count('node_album', $file->pid);
+      photos_set_count('user_image', $file->uid);
+      _comment_update_node_statistics($file->pid);
+    }
+
+    if (empty($file)) {
+      $file = file_load($fid);
+    }
+    if (empty($file->pid)) {
+      $file->pid = db_select('photos_image', 'p')
+        ->fields('p', array('pid'))
+        ->condition('fid', $file->fid)
+        ->execute()->fetchField();
+    }
+    file_usage_delete($file, 'photos', 'node', $file->pid);
+    file_delete($file);
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Save photos in custom directory structure.
+ */
+function photos_check_path($type = 'default', $file = FALSE, $account = FALSE) {
+  if (!$account) {
+    global $user;
+    $account = $user;
+  }
+  $path = array();
+  switch ($type) {
+    case 'default':
+      if (variable_get('photos_path', 'photos')) {
+        $mm = format_date(REQUEST_TIME, 'custom', "Y|m|d");
+        $m = explode('|', $mm);
+        $a = array('%uid' => $account->uid, '%username' => $account->name, '%Y' => $m[0], '%m' => $m[1], '%d' => $m[2]);
+        $b = strtr(variable_get('photos_path', 'photos'), $a);
+        $path = explode('/', $b);
+      }
+      else {
+        $path[] = 'photos';
+      }
+    break;
+  }
+  $dirs = array();
+  foreach ($path as $folder) {
+  $dirs[] = $folder;
+    $t = file_default_scheme() . '://' . implode('/', $dirs);
+    if (!file_prepare_directory($t, FILE_CREATE_DIRECTORY)) {
+      return FALSE;
+    }
+  }
+
+  return $t;
+}
+
+/**
+ * Storage process information.
+ */
+function photos_upload_info($t = 'd') {
+  $info = variable_get('photos_size', FALSE);
+  if (is_array($info)) {
+    $v['count'] = count($info);
+    $v['size'] = $info;
+    return $v;
+  }
+
+  return FALSE;
+}
+
+/**
+ * User albums.
+ */
+function _photos_useralbum_option($uid = 0, $current = 0) {
+  if (!$uid) $uid = $GLOBALS['user']->uid;
+  $output = array();
+  if (arg(1) == 'quote' && $_GET['type'] <> 'upload') {
+    $choice = new stdClass();
+    $choice->option = array(t('All albums'));
+    $output[] = $choice;
+  }
+  // @todo cleanup and test.
+  $result = db_query('SELECT n.nid, n.title FROM {node} n INNER JOIN {photos_album} a ON a.pid = n.nid WHERE n.uid = :uid ORDER BY n.nid DESC', array(':uid' => $uid));
+  $query = db_select('node', 'n');
+  $query->join('photos_album', 'a', 'a.pid = n.nid');
+  $query->fields('n', array('nid', 'title'));
+  $query->condition('n.uid', $uid);
+  $query->orderBy('n.nid', 'DESC');
+  $result = $query->execute();
+
+  $true = FALSE;
+  foreach ($result as $a) {
+    $choice = new stdClass();
+    $choice->option = array($a->nid => $a->title);
+    $output[] = $choice;
+    $true = TRUE;
+  }
+  if ($current) {
+    $choice = new stdClass();
+    $choice->option = array($current[0] => $current[1]);
+    $output[] = $choice;
+  }
+  if (!$true) {
+    $output = array(t('You do not have an album yet.'));
+  }
+
+  return $output;
+}
+
+/**
+ * Image written to database.
+ */
+function photos_image_date($file, $title = 0) {
+  $exif = ($file->filemime == 'image/jpeg') ? 1 : 0;
+  if (isset($file->fid) && isset($file->pid)) {
+    $fid = $file->fid;
+    $pid = $file->pid;
+    db_merge('photos_image')
+      ->key(array(
+        'fid' => $file->fid
+      ))
+      ->fields(array(
+        'pid' => $file->pid,
+        'title' => isset($file->title) ? $file->title : $file->filename,
+        'des' => isset($file->des) ? $file->des : '',
+        'wid' => isset($file->wid) ? $file->wid : 0,
+        'comcount' => 0,
+        'count' => 0,
+        'exif' => $exif
+      ))
+      ->execute();
+  }
+  if (isset($fid) && !empty($fid)) {
+    if (isset($file->nid)) {
+      db_insert('photos_node')
+        ->fields(array(
+          'nid' => $file->nid,
+          'fid' => $file->fid
+        ))
+        ->execute();
+    }
+    if (variable_get('photos_user_count_cron', 1)) {
+      global $user;
+      photos_set_count('user_image', (isset($file->uid) ? $file->uid : $user->uid));
+      photos_set_count('node_album', $file->pid);
+      isset($file->nid) ? photos_set_count('node_node', $file->nid) : NULL;
+    }
+    $file->status = 1;
+    $file = file_save($file);
+    file_usage_add($file, 'photos', 'node', $pid);
+    if ($photos_size_max = variable_get('photos_size_max', '')) {
+      file_validate_image_resolution($file, $photos_size_max);
+    }
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Get thumbnail information by name.
+ */
+function _photos_get_thumbname($name) {
+  // @todo deprecated, use image styles.
+  $t = photos_upload_info(0);
+  foreach ($t['size'] as $c) {
+    if ($c['name'] == $name) {
+      return $c;
+    }
+  }
+}
+
+/**
+ * Get photo informaiton.
+ */
+function photos_get_info($fid, $image = 0, $view = 0, $all = 0) {
+  if ($fid) {
+    if (!$all) {
+      $image = db_select('file_managed')
+        ->fields('file_managed', array('fid', 'uri', 'filename'))
+        ->condition('fid', $fid)
+        ->execute()->fetchObject();
+    }
+    else {
+      $image = db_query('SELECT f.uri, f.filemime, f.timestamp, f.filename, u.uid, u.name, p.* FROM {file_managed} f INNER JOIN {photos_image} p ON f.fid = p.fid INNER JOIN {node} n ON p.pid = n.nid INNER JOIN {users} u ON f.uid = u.uid WHERE p.fid = :fid',
+        array(':fid' => $fid))->fetchObject();
+    }
+  }
+  if (isset($image->fid)) {
+    $sizes = photos_upload_info(0);
+    if (variable_get('photos_access_photos', 0)) {
+      $image->original = 'photos/get/' . $image->fid . '/original/' . $image->uri;
+      foreach ($sizes['size'] as $thumb) {
+        $image->thumb[$thumb['style']] = $thumb['name'];
+      }
+    }
+    else {
+      $image->original = $image->uri;
+      foreach ($sizes['size'] as $thumb) {
+        $image->thumb[$thumb['style']] = $thumb['name'];
+      }
+    }
+    if ($view) {
+      if (!isset($view['title']) && isset($image->title)) $view['title'] = $image->title;
+      if (isset($view['style_name']) && !empty($view['style_name'])) {
+        $style_name = $view['style_name'];
+      }
+      else {
+        $style_name = variable_get('photos_thumb_imagesize', 'thumbnail');
+      }
+      if (isset($view['href'])) {
+        $image->href = $view['href'];
+      }
+      if (isset($view['colorbox'])) {
+        $view['colorbox'] = $image->thumb[variable_get('photos_display_view_imagesize', FALSE)];
+      }
+
+      return theme('photos_imagehtml', array('image' => $image, 'style_name' => $style_name));
+    }
+  }
+
+  return $image;
+}
+
+/**
+ * Implements hook_preprocess().
+ */
+function photos_preprocess_photos_imagehtml(&$variables, $hook) {
+  $style_name = $variables['style_name'];
+  $image = $variables['image'];
+  $style_label = isset($image->thumb[$style_name]) ? $image->thumb[$style_name] : '';
+  $filename = isset($image->filename) ? strip_tags($image->filename) : '';
+  $title = isset($image->title) ? strip_tags($image->title) : $filename;
+  $alt = isset($image->alt) ? strip_tags($image->alt) : $title;
+  $image->alt = $alt;
+  if ($style_name == 'original') {
+    $image_styles = image_style_options(FALSE);
+    if (isset($image_styles['original'])) {
+      $image_view = theme('image_style', array(
+        'style_name' => $style_name,
+        'path' => $image->uri,
+        'alt' => $alt,
+        'title' => $alt
+      ));
+    }
+    else {
+      $image_view = theme('image', array(
+        'path' => $image->uri,
+        'alt' => $alt,
+        'title' => $alt
+      ));
+    }
+  }
+  else {
+    $image_view = theme('image_style', array(
+      'style_name' => $style_name,
+      'path' => $image->uri,
+      'alt' => $alt,
+      'title' => $alt
+    ));
+  }
+  $image->view = $image_view;
+}
+
+/**
+ * Return number of albums or photos.
+ */
+function photos_get_count($type, $id = 0) {
+  switch ($type) {
+    case 'user_album':
+    case 'user_image':
+    case 'site_album':
+    case 'site_image':
+    case 'node_node':
+      return db_query("SELECT value FROM {photos_count} WHERE cid = :cid AND type = :type", array(':cid' => $id, ':type' => $type))->fetchField();
+    case 'node_album':
+      return db_query("SELECT count FROM {photos_album} WHERE pid = :pid", array(':pid' => $id))->fetchField();
+  }
+}
+
+/**
+ * Calculate number of $type.
+ */
+function photos_set_count($type, $id = 0) {
+  switch ($type) {
+    case 'user_image':
+      $count = db_query('SELECT count(p.fid) FROM {photos_image} p INNER JOIN {file_managed} f ON p.fid = f.fid WHERE f.uid = :id',
+        array(':id' => $id))->fetchField();
+      $query = db_update('photos_count');
+      $query->fields(array(
+        'value' => $count,
+        'changed' => REQUEST_TIME
+      ));
+      $query->condition('cid', $id);
+      $query->condition('type', $type);
+      $affected_rows = $query->execute();
+      if (!$affected_rows) {
+        db_insert('photos_count')
+          ->fields(array(
+            'cid' => $id,
+            'changed' => REQUEST_TIME,
+            'type' => $type,
+            'value' => $count
+          ))
+          ->execute();
+      }
+    break;
+    case 'user_album':
+      $count = db_query('SELECT count(p.pid) FROM {photos_album} p INNER JOIN {node} n ON p.pid = n.nid WHERE n.uid = :uid',
+        array(':uid' => $id))->fetchField();
+      $query = db_update('photos_count')
+        ->fields(array(
+          'value' => $count,
+          'changed' => REQUEST_TIME
+        ))
+        ->condition('cid', $id)
+        ->condition('type', $type);
+      $affected_rows = $query->execute();
+      if (!$affected_rows) {
+        db_insert('photos_count')
+          ->fields(array(
+            'cid' => $id,
+            'changed' => REQUEST_TIME,
+            'type' => $type,
+            'value' => $count
+          ))
+          ->execute();
+      }
+    break;
+    case 'site_album':
+      $count = db_query('SELECT COUNT(pid) FROM {photos_album}')->fetchField();
+      $query = db_update('photos_count')
+        ->fields(array(
+          'value' => $count,
+          'changed' => REQUEST_TIME
+        ))
+        ->condition('cid', 0)
+        ->condition('type', $type);
+      $affected_rows = $query->execute();
+      if (!$affected_rows) {
+        db_insert('photos_count')
+          ->fields(array(
+            'cid' => 0,
+            'changed' => REQUEST_TIME,
+            'type' => $type,
+            'value' => $count
+          ))
+          ->execute();
+      }
+    break;
+    case 'site_image':
+      $count = db_query('SELECT COUNT(fid) FROM {photos_image}')->fetchField();
+      $query = db_update('photos_count')
+        ->fields(array(
+          'value' => $count,
+          'changed' => REQUEST_TIME
+        ))
+        ->condition('cid', 0)
+        ->condition('type', $type);
+      $affected_rows = $query->execute();
+      if (!$affected_rows) {
+        db_insert('photos_count')
+          ->fields(array(
+            'cid' => 0,
+            'changed' => REQUEST_TIME,
+            'type' => $type,
+            'value' => $count
+          ))
+          ->execute();
+      }
+    break;
+    case 'node_node':
+      $count = db_query('SELECT COUNT(nid) FROM {photos_node} WHERE nid = :nid', array(':nid' => $id))->fetchField();
+      $query = db_update('photos_count')
+        ->fields(array(
+          'value' => $count,
+          'changed' => REQUEST_TIME
+        ))
+        ->condition('cid', $id)
+        ->condition('type', $type);
+      $affected_rows = $query->execute();
+      if (!$affected_rows) {
+        db_insert('photos_count')
+          ->fields(array(
+            'cid' => $id,
+            'changed' => REQUEST_TIME,
+            'type' => $type,
+            'value' => $count
+          ))
+          ->execute();
+      }
+    break;
+    case 'node_album':
+      db_query("UPDATE {photos_album} SET count = (SELECT COUNT(fid) FROM {photos_image} WHERE pid = :pid) WHERE pid = :pid", array(':pid' => $id));
+    break;
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function photos_cron() {
+  _photos_res_count(1);
+}
+
+/**
+ * Update count.
+ */
+function _photos_res_count($cron = 0) {
+  photos_set_count('site_album');
+  photos_set_count('site_image');
+  $time = $cron ? 7200 : 0;
+  if ((REQUEST_TIME - variable_get('cron_last', 0)) > $time) {
+    $result = db_query('SELECT uid FROM {users} WHERE uid <> 0');
+    foreach ($result as $t) {
+      photos_set_count('user_image', $t->uid);
+      photos_set_count('user_album', $t->uid);
+    }
+    $result = db_query('SELECT pid FROM {photos_album}');
+    foreach ($result as $t) {
+      photos_set_count('node_album', $t->pid);
+    }
+    $result = db_query('SELECT DISTINCT(nid) FROM {photos_node}');
+    foreach ($result as $t) {
+      photos_set_count('node_node', $t->nid);
+    }
+  }
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function photos_libraries_info() {
+  $libraries['jeditable'] = array(
+    'name' => 'Jeditable',
+    'vendor url' => 'http://www.appelsiini.net/projects/jeditable',
+    'version arguments' => array(
+      'file' => 'jquery.jeditable.js',
+      'pattern' => '@Version\s+([0-9a-zA-Z\.-]+)@',
+      'lines' => 20,
+    ),
+    'files' => array(
+      'js' => array(
+        'jquery.jeditable.mini.js',
+      ),
+    ),
+    'variants' => array(
+      'minified' => array(
+        'files' => array(
+          'js' => array(
+            'jquery.jeditable.mini.js',
+          ),
+        ),
+      ),
+      'source' => array(
+        'files' => array(
+          'js' => array(
+            'jquery.jeditable.js',
+          ),
+        ),
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+/**
+ * Implements hook_init().
+ */
+function photos_init() {
+  drupal_add_js(drupal_get_path('module', 'photos') . '/js/min/photos.min.js');
+  $library = 'nope';
+  if (module_exists('libraries')) {
+    if (($library = libraries_load('jeditable')) && !empty($library['loaded'])) {
+      drupal_add_js(drupal_get_path('module', 'photos') . '/js/min/photos_jeditable.min.js');
+    }
+  }
+  drupal_add_js(array(
+    'photos' => array(
+      'image_edit_token' => drupal_get_token('image_edit_token')
+    )
+  ), 'setting');
+  drupal_add_css(drupal_get_path('module', 'photos') . '/css/photos.css');
+}
+
+/**
+ * Implememtns hook_theme().
+ */
+function photos_theme($existing, $type, $theme, $path) {
+  return array(
+    'photos_editlist_form' => array(
+        'render element' => 'form',
+    ),
+    'photos_comment_count' => array(
+      'function' => 'photos_theme_photos_comment_count',
+      'variables' => array('comcount' => NULL, 'url' => NULL),
+    ),
+    'photos_default' => array(
+      'template' => 'tpl/photos_default',
+      'variables' => array('content' => NULL),
+    ),
+    'photos_down' => array(
+      'template' => 'tpl/photos_down',
+      'variables' => array('content' => NULL, 'type' => NULL),
+    ),
+    'photos_slide' => array(
+      'template' => 'tpl/photos_slide',
+      'variables' => array('content' => NULL),
+    ),
+    'photos_imageview' => array(
+      'template' => 'tpl/photos_imageview',
+      'variables' => array('image' => NULL, 'type' => NULL),
+    ),
+    'photos_imageblock' => array(
+      'template' => 'tpl/photos_imageblock',
+      'variables' => array('image' => NULL),
+    ),
+    'photos_block' => array(
+      'function' => 'photos_theme_photos_block',
+      'variables' => array('images' => NULL, 'type' => NULL),
+    ),
+    'photos_albumview' => array(
+      'template' => 'tpl/photos_albumview',
+      'variables' => array('album' => NULL, 'node' => NULL),
+    ),
+    'photos_albumlist' => array(
+      'template' => 'tpl/photos_albumlist',
+      'variables' => array('image' => NULL),
+    ),
+    'photos_albumlinks' => array(
+      'template' => 'tpl/photos_albumlinks',
+      'variables' => array('links' => NULL),
+    ),
+    'photos_imagehtml' => array(
+      'template' => 'tpl/photos_imagehtml',
+      'variables' => array('image' => NULL, 'style_name' => NULL),
+    ),
+    'photos_exif' => array(
+      'template' => 'tpl/photos_exif',
+      'variables' => array('exif' => NULL, 'type' => NULL),
+    ),
+    'photos_print' => array(
+      'template' => 'tpl/photos_print',
+      'variables' => array('content' => NULL, 'type' => NULL),
+    ),
+    'photos_share' => array(
+      'template' => 'tpl/photos_share',
+      'variables' => array('images' => NULL, 'type' => NULL),
+    ),
+    'photos_vote' => array(
+      'template' => 'tpl/photos_vote',
+      'variables' => array('fid' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ */
+function photos_preprocess_photos_vote(&$variables) {
+  global $user;
+  if ($variables['fid']) {
+    $fid = $variables['fid'];
+    $x = votingapi_select_votes(array('uid' => $user->uid, 'entity_type' => 'image', 'entity_id' => $fid));
+    if (!user_access('allowed to vote')) {
+      $variables['vote']['access'] = TRUE;
+      $variables['vote']['down']['#href'] = url('user/login', array('query' => drupal_get_destination()));
+      $variables['vote']['down']['#title'] = t('Login to vote');
+      $variables['vote']['up']['#href'] = $variables['vote']['down']['#href'];
+      $variables['vote']['up']['#title'] = $variables['vote']['down']['#title'];
+    }
+    else {
+      if (isset($x['0']['value']) && $x['0']['value'] == 1) {
+        $down_href = url('photos/image/' . $fid . '/vote/down', array('query' => drupal_get_destination()));
+        $up_href = '';
+      }
+      elseif (isset($x['0']['value']) && $x['0']['value'] == -1) {
+        $down_href = '';
+        $up_href = url('photos/image/' . $fid . '/vote/up', array('query' => drupal_get_destination()));
+      }
+      else {
+        $down_href = url('photos/image/' . $fid . '/vote/down', array('query' => drupal_get_destination()));
+        $up_href = url('photos/image/' . $fid . '/vote/up', array('query' => drupal_get_destination()));
+      }
+      $variables['vote']['up'] = array(
+        '#title' => t('I like this image'),
+        '#href' => $up_href
+      );
+      $variables['vote']['down'] = array(
+        '#title' => t('I do not like this image'),
+        '#href' => $down_href
+      );
+    }
+    $sum = votingapi_recalculate_results('image', $fid);
+    if (isset($sum['0']['value']) && $sum['0']['value']) {
+      $t_sum = $sum['2']['value'];
+      $t_average = $sum['1']['value'];
+      $t_count = $sum['0']['value'];
+    }
+    else {
+      $t_count = $t_sum = 0;
+    }
+    $variables['vote']['count'] = array(
+      '#count' => $t_count,
+      '#sum' => $t_sum,
+      '#average' => isset($t_average) ? $t_average : '',
+      '#title' => t('View voting users')
+    );
+    if (user_access('view vote list')) {
+      $variables['vote']['count']['#href'] = url('photos/zoom/' . $fid . '/vote');
+    }
+  }
+}
+
+/**
+ * Rename file with random name.
+ */
+function _photos_rename($name = 0, $ext = 0) {
+  if (variable_get('photos_rname', 0)) {
+    if ($name) {
+      return round(rand(15770, 967049700)) . REQUEST_TIME . '.' . ($ext ? $ext : end(explode('.', $name)));
+    }
+    if (!empty($_FILES['files'])) {
+      foreach ($_FILES['files']['name'] as $field => $filename) {
+        $_FILES['files']['name'][$field] = round(rand(15770, 967049700)) . REQUEST_TIME . '.' . ($ext ? $ext : end(explode('.', $filename)));
+      }
+    }
+  }
+  elseif ($name) {
+    return $name;
+  }
+}
+
+/**
+ * Theme photos comment count.
+ */
+function photos_theme_photos_comment_count($variables) {
+  $url = $variables['url'];
+  $comcount = $variables['comcount'];
+  if (empty($comcount)) {
+    if (!user_access('post comments')) {
+      $comment = t('<a href="@login">Login</a> to post comments', array('@login' => url('user/login', array('query' => array(drupal_get_destination())))));
+    }
+    else {
+      $comment = '<a href="' . (isset($url) ? $url . '#comment-form' : '#comment-form') . '">' . t('Add new comment') . '</a>';
+    }
+  }
+  elseif ($comcount > 1) {
+    $comment = '<a href="' . (isset($url) ? $url . '#comments' : '#comments') . '">' . t('!con comments', array('!con' => $comcount)) . '</a>';
+  }
+  else {
+    $comment = '<a href="' . (isset($url) ? $url . '#comments' : '#comments') . '">' . t('!con comment', array('!con' => $comcount)) . '</a>';
+  }
+  return $comment;
+}
+
+/**
+ * Unzip.
+ */
+function _photos_unzip($source, $value, $limits = FALSE) {
+  global $user;
+  if (version_compare(PHP_VERSION, '5') >= 0) {
+    if (!is_file($source)) {
+      return t('Compressed file does not exist, please check the path') . ': ' . $source;
+    }
+    $type = array('jpg', 'gif', 'png', 'jpeg', 'JPG', 'GIF', 'PNG', 'JPEG');
+    $zip = new ZipArchive();
+    // @todo update?
+    $relative_path = variable_get('file_' . file_default_scheme() . '_path', conf_path() . '/files/');
+    $source = str_replace(file_default_scheme() . '://', $relative_path, $source);
+    if ($zip->open($source)) {
+      for ($x = 0; $x < $zip->numFiles; ++$x) {
+        $image = $zip->statIndex($x);
+        $filename_parts = explode('.', $image['name']);
+        $ext = end($filename_parts);
+        if (in_array($ext, $type)) {
+          $path = file_create_filename(_photos_rename($image['name'], $ext), photos_check_path());
+          if ($temp_file = file_save_data($zip->getFromIndex($x), $path)) {
+            $info = image_get_info($temp_file->uri);
+            $file = (object) array_merge((array) $temp_file, (array) $value);
+            if ($limits['resolution']) {
+              list ($width, $height) = explode('x', $limits['resolution']);
+              // @todo update or remove file limits.
+              if ($info['width'] > $width || $info['height'] > $height) {
+                $file_image = array(
+                  'source' => $file->uri,
+                  'info' => $info,
+                  'toolkit' => image_get_toolkit()
+                );
+                image_scale($file_image, $width, $height);
+              }
+            }
+            // $file->filename = $value->title ? $value->title : $image['name'];
+            if ($file->fid = _photos_save_data($file)) {
+              if (photos_image_date($file)) $msg[] = 1;
+            }
+          }
+        }
+      }
+      $zip->close();
+      file_unmanaged_delete($source);
+      $message = t('%num images extracted successfully!', array('%num' => count($msg)));
+    }
+    else {
+      $message = t('Compressed file does not exist, please check the path') . ': ' . $source;
+    }
+  }
+
+  return $message;
+}
+
+/**
+ * Write files.
+ */
+function _photos_save_data($file, $val = array()) {
+  $errors = array();
+  foreach ($val as $function => $args) {
+    array_unshift($args, $file);
+    $errors = array_merge($errors, call_user_func_array($function, $args));
+  }
+  if (!empty($errors)) {
+    $message = t('The selected file %name could not be uploaded.', array('%name' => $file->filename));
+    if (count($errors) > 1) {
+      $message .= '<ul><li>' . implode('</li><li>', $errors) . '</li></ul>';
+    }
+    else {
+      $message .= ' ' . array_pop($errors);
+    }
+    drupal_set_message($message);
+    return 0;
+  }
+  $file = file_save($file);
+
+  return $file->fid;
+}
+
+/**
+ * Photos - return image object.
+ */
+function _photos_check_image($fid) {
+  $image = db_select('photos_image', 'p')
+    ->fields('p')
+    ->condition('p.fid', $fid)
+    ->execute()->fetchObject();
+  return $image;
+}
+
+/**
+ * Photos - return node title.
+ */
+function _photos_node_title($nid) {
+  return db_query('SELECT title FROM {node} WHERE nid = :nid', array(':nid' => $nid))->fetchField();
+}
+
+/**
+ * Photos - return url.
+ */
+function _photos_l($path, $style_name = 'thumbnail') {
+  $image_url = '';
+  if ($style_name == 'original') {
+    $image_styles = image_style_options(FALSE);
+    if (isset($image_styles['original'])) {
+      $image_url = image_style_url($style_name, $path);
+    }
+    else {
+      $image_url = file_create_url($path);
+    }
+  }
+  else {
+    $image_url = image_style_url($style_name, $path);
+  }
+
+  return $image_url;
+}
+
+/**
+ * Sets breadcrumb.
+ */
+function _photos_breadcrumb($v = array()) {
+  if ($v) {
+    $b[] = l(t('Home'), NULL);
+    foreach ($v as $t) {
+      $b[] = $t;
+    }
+  }
+  else {
+    foreach (drupal_get_breadcrumb() as $t) {
+      $b[] = $t;
+    }
+    $b[] = drupal_get_title();
+  }
+
+  return drupal_set_breadcrumb($b);
+}
+
+/**
+ * Handles JSON.
+ */
+function _photos_json($type, $v) {
+  if ($type == 'en') {
+    return drupal_json_encode($v);
+  }
+  else {
+    return drupal_json_decode($v);
+  }
+}
+
+/**
+ * Tracks number of albums created and number of albums allowed.
+ */
+function photos_user_count() {
+  global $user;
+  $array = array_keys($user->roles);
+  $t['create'] = photos_get_count('user_album', $user->uid);
+  $t['total'] = variable_get('photos_pnum_' . $array[0],  20);
+  $t['remain'] = ($t['total'] - $t['create']);
+  if ($user->uid <> 1 && $t['remain'] <= 0) {
+    $t['rest'] = 1;
+  }
+  return $t;
+}
+
+/**
+ * Query helper: sort order and limit.
+ */
+function _photos_order_value($field, $sort, $limit, $default = 0) {
+  // @todo update default to check album default!
+  if (!$field && !$sort) {
+    $t['order'] = !$default ? array('column' => 'f.fid', 'sort' => 'desc') : $default;
+  }
+  else {
+    if (!$t['order'] = _photos_order_value_change($field, $sort)) {
+      $t['order'] = !$default ? array('column' => 'f.fid', 'sort' => 'desc') : $default;
+    }
+  }
+  if ($limit) {
+    if (isset($_GET['limit']) && !$show = intval($_GET['limit'])) {
+      if ($_GET['destination']) {
+        $str = urldecode($_GET['destination']);
+        if (preg_match('/.*limit=(\d*).*/i', $str, $mat)) $show = intval($mat[1]);
+      }
+    }
+    $t['limit'] = isset($show) ? $show : $limit;
+  }
+
+  return $t;
+}
+
+/**
+ * Extends photos order value.
+ */
+function _photos_order_value_change($field, $sort) {
+  $array = array(
+    'weight' => 'p.wid',
+    'timestamp' => 'f.fid',
+    'comments' => 'p.comcount',
+    'visits' => 'p.count',
+    'filesize' => 'f.filesize'
+  );
+  $array1 = array(
+    'desc' => 'desc',
+    'asc' => 'asc'
+  );
+  if (isset($array[$field]) && isset($array1[$sort])) {
+    return array(
+      'column' => $array[$field],
+      'sort' => $array1[$sort]
+    );
+  }
+}
+
+/**
+ * Returns array of query parameters.
+ */
+function _photos_pager_get_query() {
+  $query = array();
+  if (!isset($string)) {
+    $query = drupal_get_query_parameters($_REQUEST, array_merge(array('limit', 'q', 'page', 'destination'), array_keys($_COOKIE)));
+  }
+
+  return $query;
+}
+
+/**
+ * Limit and sort by links.
+ */
+function _photos_order_link($arg, $count = 0, $link = 0, $limit = 0) {
+  $field = array(
+    'weight' => t('By weight'),
+    'timestamp' => t('By time'),
+    'comments' => t('By comments'),
+    'visits' => t('By visits'),
+    'filesize' => t('By filesize')
+  );
+  if ($limit) {
+    $query = _photos_pager_get_query();
+    $links['limit'] = '';
+    if (!is_array($limit)) {
+      $limit = array(5, 10, 20, 30, 40, 50);
+    }
+    $limit_query = $query;
+    foreach ($limit as $tt) {
+      $limit_query['limit'] = $tt;
+      $sort = array(
+        'query' => $limit_query,
+        'attributes' => array(
+          'class' => array(
+            (isset($_GET['limit']) && $_GET['limit'] == $tt) ? 'orderac' : NULL
+          ),
+          'rel' => 'nofollow'
+        )
+      );
+      $links['limit'] .= l($tt, $_GET['q'], $sort);
+    }
+  }
+  $links['count'] = $count;
+  $links['link'] = $link ? $link : NULL;
+  $links['sort'] = l(t('Default'), $arg, array('attributes' => array('rel' => 'nofollow')));
+  foreach ($field as $key => $t) {
+    if (!isset($_GET['field']) || $_GET['field'] <> $key) {
+      $sort = 'desc';
+      $class = 'photos_order_desc';
+    }
+    elseif ($_GET['sort'] == 'desc') {
+      $sort = 'asc';
+      $class = 'photos_order_desc orderac';
+    }
+    else {
+      $sort = 'desc';
+      $class = 'photos_order_asc orderac';
+    }
+    $field_query = array(
+      'sort' => $sort,
+      'field' => $key
+    );
+    if (isset($_GET['limit'])) $field_query['limit'] = check_plain($_GET['limit']);
+    $links['sort'] .= l($t, $_GET['q'], array(
+      'query' => $field_query,
+      'attributes' => array(
+        'class' => array($class),
+        'rel' => 'nofollow'
+      )
+    ));
+  }
+
+  return theme('photos_albumlinks', array('links' => $links));
+}
+
+/**
+ * Sort order labels.
+ */
+function _photos_order_label() {
+  return array(
+    'weight|asc' => t('Weight - smallest first'),
+    'weight|desc' => t('Weight - largest first'),
+    'timestamp|desc' => t('Date - newest first'),
+    'timestamp|asc' => t('Date - oldest first'),
+    'comments|desc' => t('Comments - most first'),
+    'comments|asc' => t('Comments - least first'),
+    'filesize|desc' => t('Filesize - smallest first'),
+    'filesize|asc' => t('Filesize - largest first'),
+    'visits|desc' => t('Visits - most first'),
+    'visits|asc' => t('Visits - least first')
+  );
+}
+
+/**
+ * Format size selection options.
+ */
+function _photos_select_size($none = 0) {
+  if ($none) $v[] = 'Do not show';
+  $info = photos_upload_info(0);
+  foreach ($info['size'] as $size) {
+    $v[$size['style']] = $size['name'];
+  }
+
+  return $v;
+}
+
+/**
+ * Format size label.
+ */
+function _photos_labels($sizes = 0) {
+  if (!$sizes) {
+    $t = photos_upload_info(0);
+    $sizes = $t['size'];
+  }
+  foreach ($sizes as $size) {
+    $label[] = $size['style'];
+  }
+
+  return $label;
+}
+
+/**
+ * Photos select sub album.
+ */
+function _photos_select_sub_album() {
+  $t = array();
+  $types = node_type_get_names();
+  foreach ($types as $type => $name) {
+    if (variable_get('photos_node_' . $type, 0)) {
+      $t[] = $type;
+    }
+  }
+
+  return $t;
+}
+
+/**
+ * Implements hook_filter_info().
+ */
+function photos_filter_info() {
+  $filters['filter_photos'] = array(
+    'title' => t('Insert image and album'),
+    'description' => t('photos.module filter format, at the node to insert images or albums. e.g: [photo=image]id=55,54,53,52|align=right[/photo] or [photo=album]id=134[/photo] or [photo=album]id=134|limit=6[/photo].'),
+    'process callback' => 'photos_filter_process',
+    'tips callback'  => '_photos_filter_tips',
+  );
+  return $filters;
+}
+
+/**
+ * Photos filter tips.
+ */
+function _photos_filter_tips($filter, $format, $long = FALSE) {
+  switch ($long) {
+    case 0:
+      return t('Insert an image: [photo=image]id=55[/photo], Insert multiple images: [photo=image]id=55,56,57,58[/photo], Insert album: [photo=album]id=10[/photo].');
+    case 1:
+      $t = '<h2>' . t('Insert image and album') . '</h2>';
+      $item[] = t('Insert an image: [photo=image]id=55[/photo].');
+      $item[] = t('Insert multiple images: [photo=image]id=55,56,57,58,59[/photo].');
+      $item[] = t('Optional attributes: align, e.g: [photo=image]id=55|align=left[/photo] or [photo=image]id=55,56,57|align=right[/photo].');
+      $t .= theme('item_list', array('items' => $item, 'title' => t('Insert image')));
+      $item = array();
+      $item[] = t('Insert album: [photo=album]id=10[/photo].The default display album cover. You can change, please configure the "limit" property.');
+      $item[] = t('Optional attributes: align or limit, e.g: [photo=album]id=10|align=left[/photo] or [photo=album]id=10|align=right|limit=5[/photo].');
+      $t .= theme('item_list', array('items' => $item, 'title' => t('Insert album')));
+      $share_url = l(t('Click to here'), 'photos/share');
+      $t .= t('This is similar to bbcode, do not seem friendly, You can try visualization interface: !url', array('!url' => $share_url));
+      return $t;
+  }
+}
+
+/**
+ * Photos filter process.
+ */
+function photos_filter_process($text) {
+  $text = ' ' . $text . ' ';
+  $text = preg_replace_callback('/\[photo=(.*?)\](.*?)\[\/photo\]/ms', '_photos_filter_process', $text);
+  $text = drupal_substr($text, 1, -1);
+  return $text;
+}
+
+/**
+ * Expands on photos filter process.
+ */
+function _photos_filter_process($mat) {
+  $value = '';
+  if ($mat[1] == 'image' || $mat[1] == 'album') {
+    $align = array('left' => 'photos_filter_left', 'right' => 'photos_filter_right', 'center' => 'photos_filter_center');
+    $array = explode('|', $mat[2]);
+    if (is_array($array)) {
+      foreach ($array as $setting) {
+        $t = explode('=', $setting);
+        $set[$t[0]] = $t[1];
+      }
+    }
+    $sizes = photos_upload_info(0);
+    $style_name = '';
+    if (isset($set['label'])) {
+      $styles = array();
+      // Check photos style label.
+      foreach ($sizes['size'] as $size) {
+        $styles[$size['name']] = $size['style'];
+      }
+      if (isset($styles[$set['label']])) {
+        $style_name = $styles[$set['label']];
+      }
+      else {
+        $styles = array();
+        // Fall back on style id.
+        foreach ($sizes['size'] as $size) {
+          $styles[$size['style']] = $size['name'];
+        }
+        if (isset($styles[$set['label']])) {
+          $style_name = $styles[$set['label']];
+        }
+      }
+    }
+    $set['link'] = 1;
+    if ($set['id']) {
+      if (preg_match('/[^\d,]/i', $set['id'])) {
+        return;
+      }
+      elseif (!strstr($set['id'], ',')) {
+        if ($mat[1] == 'image') {
+          $set['style_name'] = $style_name;
+          $value = photos_get_info($set['id'], 0, $set);
+        }
+        else {
+          $album = db_select('photos_album', 'p')
+            ->fields('p', array('pid', 'fid'))
+            ->condition('p.pid', $set['id'])
+            ->execute()->fetchObject();
+          if (!empty($album->pid)) {
+            if (isset($set['limit']) && intval($set['limit']) == $set['limit']) {
+              $limit = ($set['limit'] > 10) ? 10 : $set['limit'];
+              $query = db_select('file_managed', 'f');
+              $query->join('photos_image', 'p', 'p.fid = f.fid');
+              $query->fields('f', array('fid', 'uri', 'filename'))
+                ->condition('p.pid', $album->pid)
+                ->orderBy('f.fid', 'DESC')
+                ->limit($limit);
+              $result = $query->execute();
+              foreach ($result as $image) {
+                $set['style_name'] = $style_name;
+                $value .= photos_get_info(0, $image, $set);
+              }
+            }
+            elseif ($album->fid) {
+              $set['link'] = 0;
+              $set['href'] = 'photos/album/' . $album->pid;
+              $set['style_name'] = $style_name;
+              $value = photos_get_info($album->fid, 0, $set);
+            }
+            else {
+              $set['link'] = 0;
+              $set['href'] = 'photos/album/' . $album->pid;
+              $query = db_select('file_managed', 'f');
+              $query->join('photos_image', 'p', 'p.fid = f.fid');
+              $query->fields('f', array('fid', 'uri', 'filename'))
+                ->condition('p.pid', $album->pid)
+                ->orderBy('f.fid', 'DESC');
+              $image = $query->execute()->fetchObject();
+              $set['style_name'] = $style_name;
+              $value = photos_get_info(0, $image, $set);
+            }
+          }
+        }
+      }
+      elseif ($mat[1] == 'image') {
+        $in_set_ids = explode(',', $set['id']);
+        $result = db_select('file_managed', 'f')
+          ->fields('f', array('fid', 'uri', 'filename'))
+          ->condition('f.fid', $in_set_ids, 'IN')
+          ->execute();
+        foreach ($result as $image) {
+          $set['style_name'] = $style_name;
+          $value .= photos_get_info(0, $image, $set);
+        }
+      }
+      if ($value) {
+        $set_align = isset($set['align']) ? $set['align'] : '';
+        $output = isset($align[$set_align]) ? '<div class="' . $align[$set_align] . '">' : '';
+        $output .= $value;
+        $output .= isset($align[$set_align]) ? '</div>' : '';
+        return $output;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function photos_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'photos') . '/inc/views',
+    'template path' => drupal_get_path('module', 'photos') . '/tpl',
+  );
+}
+
+/**
+ * Implements hook_search_info().
+ *
+ * Enables searches of the Titles and Descriptions of photos within Photo Albums.
+ *
+ * Normal searches (via the Content tab) only search the album page and
+ * comments, but not each title & description.  This extension presents
+ * thumbnails of matching photos and clicking on them takes the user
+ * directly to /photos/image/fid
+ *
+ */
+function photos_search_info() {
+  return array('title' => 'Photos' ) ;
+}
+
+/**
+ * Implements hook_search_execute().
+ */
+function photos_search_execute($keys = NULL, $conditions = NULL) {
+  $query = db_select('search_index', 'i',
+    array('target' => 'slave'))->extend('SearchQuery')->extend('PagerDefault')->limit(10);
+
+  // only want photos, not nodes of any kind
+  $query->condition('i.type', 'photos');
+  $query->leftJoin('search_dataset', 'sd', 'i.sid = sd.sid');
+  $query->condition('sd.reindex', '=0');
+  $query->searchExpression($keys, 'photos');
+
+  if (!$query->executeFirstPass()) {
+    // Only continue if the first pass query matches.
+    return array();
+  }
+
+  // if we do NOT get here: problem with query?
+  $query->addTag('node_access');
+  $query->fields('i', array('word', 'type', 'score'));
+  $query->leftJoin('photos_image', 'pi', 'pi.fid = i.sid');
+  $query->fields('pi', array('fid', 'pid', 'des', 'title', 'wid', 'count'));
+  $query->orderBy('pi.wid', 'ASC');
+  $query->leftJoin('photos_album', 'pa', 'pa.pid = pi.pid');
+  $query->leftJoin('node', 'n', 'n.nid = pa.pid');
+  $query->fields('n', array('title', 'uid', 'language'));
+  $query->join('file_managed', 'fm', 'fm.fid = pi.fid');
+  $query->fields('fm', array('filesize', 'timestamp', 'uid', 'filename', 'uri'));
+
+  // Load results.
+  $found = $query->execute();
+
+  global $user;
+
+  $results = array();
+  // process each photo found:
+  foreach ($found as $item) {
+    $node = node_load($item->pid);
+
+    // If user has "bypass node access" then they can view anything, else
+    // test if photos_access() is enabled and any permissions required:
+    if (!user_access('bypass node access', $user)) {
+      // test for photos_access enabled
+      if (module_exists('photos_access')) {
+        // if photo is *not* owned by current user, test for access permissions:
+        if (!_photos_access('album', $node)) {
+          // next photo...
+          continue;
+        }
+      }
+    }
+
+    $thumbnail_src = image_style_url('thumbnail', $item->uri);
+
+    if ($item->filesize > 1024 * 1000) {
+      $file_size_sfx = 'MB';
+      $file_size = number_format($item->filesize / (1024 * 1000), 1);
+    }
+    elseif ($item->filesize > 1024) {
+      $file_size_sfx = 'KB';
+      $file_size = number_format($item->filesize / (1024));
+    }
+    else {
+      $file_size_sfx = 'Bytes';
+      $file_size = number_format($item->filesize);
+    }
+    // Iterate through found photos:
+    $results[] = array(
+      'link' => url('photos/image/' . $item->sid, array('absolute' => TRUE)),
+      'type' => $item->type, // should always be 'photos',
+      'title' => $item->title,
+      // User and date appear BEFORE extras (thumbnail) - it's ugly-ish.
+      // They've been moved into the extras, after the thumbnail.
+      'user' => '',
+      'date' => '',
+      'extra' => array(
+        'extra1' => '<p><a href="'
+          . url('photos/image/'
+          . $item->sid, array('absolute' => TRUE))
+          . '"><img src="' . $thumbnail_src . '" alt="' . $item->title
+          . '" title="' . check_plain($item->des)
+          . '"  class="photos_search_result"></a> ',
+        'extra2' => 'By ' . theme('username', array('account' => $node))
+          . ' - ' . format_date($item->timestamp, 'short')
+          . ' - ' . $file_size . ' ' . $file_size_sfx . ' ',
+        'extra3' => 'Album: <a href="' . url('photos/album/'
+          . $node->nid, array('absolute' => TRUE))
+          . '" title="Jump to Album">'
+          . check_plain($node->title) . '</a>',
+        ),
+      'score' => $item->calculated_score,
+      'snippet' => search_excerpt($keys, ' ' . $item->des . ' '),
+      'language' => $item->language == 'und' ? 'en' : $item->language
+    );
+  }
+
+  return $results;
+}
+
+/**
+ * Implements hook_search_access().
+ */
+function photos_search_access() {
+  return user_access('search content');
+}
+
+/**
+ * Implements hook_search_status().
+ */
+function photos_search_status() {
+  $result = _photos_get_photos();
+  $total_pics = $result->rowCount();
+
+  $remaining = (int) $total_pics
+    - (int) db_query('SELECT COUNT(*) from {search_dataset} AS s WHERE s.type = :type AND s.reindex = 0',
+    array(':type' => 'photos'))->fetchField();
+
+  return array(
+    "remaining" => $remaining,
+    "total" => $total_pics
+  );
+}
+
+/**
+ * Implements hook_update_index().
+ */
+function photos_update_index() {
+  $limit = 'LIMIT ' . (int) variable_get('search_cron_limit', 100);
+
+  $photos_search_max_id_ever =
+    (int) variable_get('photos_search_max_id_ever', 0);
+  $photos_search_max_id_reindex =
+    (int) variable_get(' photos_search_max_id_reindex', 0);
+
+  $wrap = (int) variable_get('photos_search_reindex_old_photos', 0);
+
+  // Fetch new photos, added since last index run:
+  $result = _photos_get_photos("WHERE pi.fid > $photos_search_max_id_ever", $limit, $wrap);
+  if ($result->rowCount() > 0) {
+    foreach ($result as $image) {
+      search_index($image->fid, 'photos', '<h1>' . $image->Title . '</h1> ' . $image->des);
+      if ($photos_search_max_id_ever <= $image->fid) {
+        /*
+         We've just indexed a brand-new photo;
+         Reset reindex counter to 0 so when reindexing we have to start
+         at beginning.
+        */
+        $photos_search_max_id_ever = $image->fid;
+        $photos_search_max_id_reindex = 0;
+      }
+      else {
+        $photos_search_max_id_reindex = $image->fid;
+      }
+    }
+    variable_set('photos_search_max_id_ever', (int) $photos_search_max_id_ever);
+    variable_set('photos_search_max_id_reindex', (int) $photos_search_max_id_reindex);
+  }
+}
+
+/**
+ * Implements hook_search_reset().
+ */
+function photos_search_reset() {
+  db_update('search_dataset')
+    ->fields(array('reindex' => REQUEST_TIME))
+    ->condition('type', 'photos')
+    ->execute();
+
+  variable_set('photos_search_max_id_ever', 0);
+  variable_set('photos_search_max_id_reindex', 0);
+}
+
+/**
+ * Get photos that are in albums.
+ *
+ * Can get all photos (for search status) or a subset of new photos
+ * for indexing.
+ *
+ * Also can "wrap" selection to gather new photos for indexing PLUS
+ * oldest photos for re-indexing (using UNION query).
+ *
+ * @param string $where
+ *   (optional) An SQL WHERE clause; usually to grab new photos where
+ *   pid > last indexed pid
+ * @param string $limit
+ *   (optional) A LIMIT clause: for getting status, use no limit, else it's set
+ *   to search_cron_limit
+ * @param string $wrap
+ *   (optional) Indicates whether to make a union query to grab newest photos, THEN
+ *   union them with the oldest photos (for re-indexing those).
+ *   This behaviour is controlled on the /admin/config/search/settings
+ *   page.
+ * @returns array of DB records containing info on photos.
+ */
+function _photos_get_photos($where = 'WHERE 1 = 1', $limit = NULL, $wrap = '') {
+  $photos_search_max_id_reindex = (int) variable_get('photos_search_max_id_reindex', 0);
+
+  // If "wrap around past newest photo" is TRUE, then
+  // a) grab new photos
+  // b) grab photos NEWER than last reindex run
+  // c) also grab oldest photos with lowest pid numbers (starting with 1)
+  // So if 10 new photos have been added, making total 210, and re-indexed
+  // number 190 already, get 201-210, 191-200, 1-80.
+
+  // Titles and descriptions can (and do) change.
+  if ($wrap !== '') {
+    // UNION newest NOT RE-INDEXED...
+    $wrap = "UNION DISTINCT "
+      . "SELECT pi.fid, pi.des, pi.title AS Title, n.title AS AlbumTitle "
+      . "FROM {photos_image} AS pi "
+      . "LEFT JOIN {file_managed} AS fm ON fm.fid = pi.fid "
+      . "LEFT JOIN {photos_album} AS pa ON pi.pid = pa.pid  "
+      . "LEFT JOIN {node} AS n ON n.nid = pa.pid "
+      . "WHERE pi.fid > $photos_search_max_id_reindex "
+      // UNION again, from OLDEST ever uploaded
+      . "UNION DISTINCT "
+      . "SELECT pi.fid, pi.des, pi.title AS Title, n.title AS AlbumTitle "
+      . "FROM {photos_image} AS pi "
+      . "LEFT JOIN {file_managed} AS fm ON fm.fid = pi.fid "
+      . "LEFT JOIN {photos_album} AS pa ON pi.pid = pa.pid  "
+      . "LEFT JOIN {node} AS n ON n.nid = pa.pid "
+      . "WHERE pi.fid > 0 ";
+  }
+
+  // Grab all photos available, depending on criteria passed as arguments:
+  $sql = "SELECT pi.fid, pi.des, pi.title AS Title, n.title AS AlbumTitle "
+    . "FROM {photos_image} AS pi "
+    . "LEFT JOIN {file_managed} AS fm ON fm.fid = pi.fid "
+    . "LEFT JOIN {photos_album} AS pa ON pi.pid = pa.pid  "
+    . "LEFT JOIN {node} AS n ON n.nid = pa.pid "
+    . "$where "
+    . $wrap
+    . " $limit ";
+
+  $result = db_query($sql);
+
+  return $result;
+}
+
+/**
+ * Implements hook_search_admin().
+ */
+function photos_search_admin() {
+  $form['photos_search_admin'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Administer Photos Search Module'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#tree' => FALSE,
+    '#action' => 'photos_search_admin_submit',
+    '#access' => user_access('administer search'),
+    '#weight' => 20,
+  );
+
+  $form['photos_search_admin']['photos_search_reindex_old_photos'] = array(
+    '#title' => t('Reindex Old Photos'),
+    '#description' => t('Control whether or not to reindex old
+      photos.  If true, once all new photos are indexed, the
+      process starts over with the oldest photos.  This catches
+      any changes to titles or descriptions post original indexing.'),
+    '#type' => 'radios',
+    '#options' => array('Reindex old photos',
+      'Do not reindex old photos'),
+    '#default_value' => variable_get('photos_search_reindex_old_photos', 0),
+    '#required' => FALSE,
+    '#disabled' => FALSE,
+  );
+
+  return $form;
+}

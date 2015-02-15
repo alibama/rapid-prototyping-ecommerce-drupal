@@ -1,0 +1,11 @@
+diff a/sites/all/modules/conditional_fields/conditional_fields.module b/sites/all/modules/conditional_fields/conditional_fields.module
+--- a/sites/all/modules/conditional_fields/conditional_fields.module
++++ b/sites/all/modules/conditional_fields/conditional_fields.module
+@@ -646,6 +646,7 @@ function conditional_fields_form_after_build($form, &$form_state) {
+     return $form;
+   }
+ 
++  $form['#attached']['js'][] = 'misc/states.js';
+   $form['#attached']['js'][] = drupal_get_path('module', 'conditional_fields') . '/js/conditional_fields.js';
+ 
+   // Add effect settings to the form.

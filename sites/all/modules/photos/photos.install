@@ -1,0 +1,540 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the Album Photos module.
+ *
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function photos_schema() {
+  $schema['photos_album'] = array(
+    'fields' => array(
+      'pid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'fid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'wid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'count' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'data' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big'
+      )
+    ),
+    'indexes' => array(
+      'fid' => array('fid'),
+      'wid' => array('wid'),
+    ),
+    'primary key' => array('pid'),
+  );
+
+  $schema['photos_image'] = array(
+    'fields' => array(
+      'fid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'pid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'title' => array(
+        'description' => 'The title of this image.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+      ),
+      'des' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big'
+      ),
+      'wid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'count' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'comcount' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'exif' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'length' => 1,
+        'default' => 0
+      ),
+    ),
+    'indexes' => array(
+      'pid' => array('pid'),
+      'wid' => array('wid'),
+      'count' => array('count'),
+      'comcount' => array('comcount'),
+    ),
+    'primary key' => array('fid'),
+  );
+
+  $schema['photos_comment'] = array(
+    'fields' => array(
+      'fid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'cid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      )
+    ),
+    'indexes' => array(
+      'fid' => array('fid'),
+      'cid' => array('cid'),
+    )
+  );
+
+  $schema['photos_node'] = array(
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'fid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'wid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      )
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'fid' => array('fid'),
+      'wid' => array('wid'),
+    )
+  );
+
+  $schema['photos_count'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE
+      ),
+      'cid' => array(
+        'type' => 'int',
+        'default' => 0,
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'type' => 'varchar',
+        'length' => 12,
+        'default' => '',
+        'not null' => TRUE
+      ),
+      'value' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'cid' => array('cid'),
+      'type' => array('type'),
+      'value' => array('value')
+    ),
+    'primary key' => array('id')
+  );
+  $schema['cache_photos'] = drupal_get_schema_unprocessed('system', 'cache');
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function photos_install() {
+  // Set default styles.
+  $size = array(
+    array('style' => 'thumbnail', 'name' => 'Thumb'),
+    array('style' => 'medium', 'name' => 'Medium'),
+    array('style' => 'large', 'name' => 'Large')
+  );
+  variable_set('photos_size', $size);
+  variable_set('photos_pager_imagesize', $size[0]['style']);
+  variable_set('photos_thumb_imagesize', $size[0]['style']);
+  variable_set('photos_display_teaser_imagesize', $size[0]['style']);
+  variable_set('photos_display_list_imagesize', $size[1]['style']);
+  variable_set('photos_display_full_imagesize', $size[1]['style']);
+  variable_set('photos_display_view_imagesize', $size[2]['style']);
+  $values = array(
+    array(
+      'cid' => 0,
+      'changed' => REQUEST_TIME,
+      'type' => 'site_album',
+      'value' => 0
+    ),
+    array(
+      'cid' => 0,
+      'changed' => REQUEST_TIME,
+      'type' => 'site_image',
+      'value' => 0
+    )
+  );
+  $query = db_insert('photos_count')
+    ->fields(array('cid', 'changed', 'type', 'value'));
+  foreach ($values as $record) {
+    $query->values($record);
+  }
+  $query->execute();
+
+  // Ensure the photos node type is available.
+  node_types_rebuild();
+  $types = node_type_get_types();
+  node_add_body_field($types['photos'], 'Album description');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function photos_uninstall() {
+  $node_types = node_type_get_names();
+  foreach ($node_types as $type => $name) {
+    variable_del('photos_node_' . $type);
+    variable_del('photos_share_' . $type);
+  }
+  $roles = user_roles();
+  foreach ($roles as $rid => $role) {
+    variable_del('photos_pnum_' . $rid);
+  }
+
+  // @todo create new var to count name/res/size and loop through to delete all.
+  $additional_sizes = variable_get('photos_additional_sizes', 5);
+  for ($i = 0; $i <= $additional_sizes; $i++) {
+    variable_del('photos_name_' . $i);
+    variable_del('photos_res_' . $i);
+    variable_del('photos_size_' . $i);
+  }
+  variable_del('photos_access_photos');
+  variable_del('photos_additional_sizes');
+  variable_del('photos_block_num_information_pager');
+  variable_del('photos_block_num_latest_images');
+  variable_del('photos_block_num_random_images');
+  variable_del('photos_block_num_user_images');
+  variable_del('photos_comment');
+  variable_del('photos_cover_imagesize');
+  variable_del('photos_display_full_imagesize');
+  variable_del('photos_display_full_viewnum');
+  variable_del('photos_display_imageorder');
+  variable_del('photos_display_list_imagesize');
+  variable_del('photos_display_page_display');
+  variable_del('photos_display_page_imagesize');
+  variable_del('photos_display_page_slide');
+  variable_del('photos_display_page_user');
+  variable_del('photos_display_slide');
+  variable_del('photos_display_teaser_display');
+  variable_del('photos_display_teaser_imagesize');
+  variable_del('photos_display_teaser_slide');
+  variable_del('photos_display_teaser_user');
+  variable_del('photos_display_teaser_viewnum');
+  variable_del('photos_display_user');
+  variable_del('photos_display_viewpager');
+  variable_del('photos_display_view_imagesize');
+  variable_del('photos_exif');
+  variable_del('photos_exif_cache');
+  variable_del('photos_image_count');
+  variable_del('photos_node_photos');
+  variable_del('photos_num');
+  variable_del('photos_pager_imagesize');
+  variable_del('photos_path');
+  variable_del('photos_plupload_status');
+  variable_del('photos_print_sizes');
+  variable_del('photos_rname');
+  variable_del('photos_share_photos');
+  variable_del('photos_size');
+  variable_del('photos_size_max');
+  variable_del('photos_slide');
+  variable_del('photos_slide_music');
+  variable_del('photos_slide_show_thumb');
+  variable_del('photos_slide_show_view');
+  variable_del('photos_slide_zoom');
+  variable_del('photos_swfu_num');
+  variable_del('photos_thumb_count');
+  variable_del('photos_thumb_create_time');
+  variable_del('photos_thumb_imagesize');
+  variable_del('photos_upzip');
+  variable_del('photos_user_count_cron');
+  variable_del('photos_vote');
+  // hook_search vars:
+  variable_del('photos_search_max_id_ever');
+  variable_del('photos_search_max_id_reindex');
+  variable_del('photos_search_reindex_old_photos');
+
+  // Remove photos nodes.
+  $result = db_select('node', 'n')
+    ->fields('n', array('nid'))
+    ->condition('n.type', 'photos')
+    ->execute();
+  foreach ($result as $node) {
+    node_delete($node->nid);
+  }
+
+  // Remove files.
+  $result = db_select('photos_image', 'p')
+    ->fields('p', array('fid'))
+    ->execute();
+  foreach ($result as $file) {
+    $file = file_load($file->fid);
+    if ($file) {
+      file_usage_delete($file, 'photos');
+      file_delete($file);
+    }
+  }
+
+  // Clear cache.
+  cache_clear_all('*', 'cache', TRUE);
+  cache_clear_all('*', 'cache_menu', TRUE);
+  cache_clear_all('*', 'cache_page', TRUE);
+}
+
+/**
+ * Upgrade from D6 to D7.
+ */
+function photos_update_7000() {
+  // @todo check existing variable sizes and create image styles with image_style_save()?
+
+  // Set default styles.
+  $size = array(
+    array('style' => 'thumbnail', 'name' => 'Thumb'),
+    array('style' => 'medium', 'name' => 'Medium'),
+    array('style' => 'large', 'name' => 'Large')
+  );
+
+  // Update varialbes to use new sizes.
+  variable_set('photos_size', $size);
+  variable_set('photos_pager_imagesize', $size[0]['style']);
+  variable_set('photos_thumb_imagesize', $size[0]['style']);
+  variable_set('photos_display_teaser_imagesize', $size[0]['style']);
+  variable_set('photos_display_list_imagesize', $size[1]['style']);
+  variable_set('photos_display_full_imagesize', $size[1]['style']);
+  variable_set('photos_display_view_imagesize', $size[2]['style']);
+  variable_set('photos_name_0', $size[0]['name']);
+  variable_set('photos_name_1', $size[1]['name']);
+  variable_set('photos_name_2', $size[2]['name']);
+  variable_set('photos_size_0', $size[0]['style']);
+  variable_set('photos_size_1', $size[1]['style']);
+  variable_set('photos_size_2', $size[2]['style']);
+  variable_set('photos_slide_show_thumb', $size[0]['style']);
+  variable_set('photos_slide_show_view', $size[2]['style']);
+
+  // Delete unused varialbes.
+  variable_del('photos_display_page_imagesize');
+  variable_del('photos_display_page_viewnum');
+  variable_del('photos_title_0');
+  variable_del('photos_title_1');
+  variable_del('photos_title_2');
+  variable_del('photos_title_3');
+  variable_del('photos_title_4');
+  variable_del('photos_title_5');
+  variable_del('photos_res_0');
+  variable_del('photos_res_1');
+  variable_del('photos_res_2');
+  variable_del('photos_res_3');
+  variable_del('photos_res_4');
+  variable_del('photos_res_5');
+  variable_del('photos_size_3');
+  variable_del('photos_size_4');
+  variable_del('photos_size_5');
+  variable_del('photos_thumb_create_time');
+
+  if (db_table_exists('x_album')) {
+    // Drop all new empty tables.
+    db_drop_table('photos_album');
+    db_drop_table('photos_count');
+    db_drop_table('photos_image');
+    db_drop_table('photos_node');
+    db_drop_table('photos_vote');
+
+    // Rename existing tables.
+    db_rename_table('x_album', 'photos_album');
+    db_rename_table('x_count', 'photos_count');
+    db_rename_table('x_image', 'photos_image');
+    db_rename_table('x_node', 'photos_node');
+    db_rename_table('x_vote', 'photos_vote');
+  }
+
+  // Move all image files to file_managed and add to file_usage.
+  $query = db_select('photos_image', 'p');
+  $query->join('files', 'f', 'f.fid = p.fid');
+  $query->fields('p')
+    ->fields('f');
+  $result = $query->execute();
+  $basename = variable_get('file_' . file_default_scheme() . '_path', conf_path() . '/files');
+  $scheme = file_default_scheme() . '://';
+  foreach ($result as $file) {
+    if (isset($file->fid)) {
+      $file->uri = $scheme . preg_replace('!^' . preg_quote($basename) . '!', '', $file->filepath);
+      $file->uri = file_stream_wrapper_uri_normalize($file->uri);
+      unset($file->filepath);
+      db_merge('file_managed')
+        ->key(array(
+          'fid' => $file->fid,
+        ))
+        ->fields(array(
+          'uid' => $file->uid,
+          'filename' => $file->filename,
+          'uri' => $file->uri,
+          'filemime' => $file->filemime,
+          'filesize' => $file->filesize,
+          'status' => $file->status,
+          'timestamp' => $file->timestamp,
+        ))
+        ->execute();
+      file_usage_add($file, 'photos', 'node', $file->pid);
+
+      // Delete from old files table.
+      db_delete('files')
+        ->condition('fid', $file->fid)
+        ->execute();
+    }
+  }
+  // @todo db_drop_table('files') if empty?
+}
+
+/**
+ * Migrate image title from {file_managed}.filename to {photos_image}.title.
+ */
+function photos_update_7300() {
+  $spec = array(
+    'description' => 'The title of this image.',
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => FALSE,
+    'default' => '',
+  );
+  if (!db_field_exists('photos_image', 'title')) {
+    db_add_field('photos_image', 'title', $spec);
+  }
+  $query = db_select('photos_image', 'i');
+  $query->join('file_managed', 'f', 'f.fid = i.fid');
+  $query->fields('i', array('fid'));
+  $query->fields('f', array('filename', 'uri'));
+  $result = $query->execute();
+  foreach ($result as $file) {
+    // Update new image title field.
+    db_update('photos_image')
+      ->fields(array(
+        'title' => $file->filename
+      ))
+      ->condition('fid', $file->fid)
+      ->execute();
+    // Reset file_managed filename.
+    $filename = drupal_basename($file->uri);
+    db_update('file_managed')
+      ->fields(array(
+        'filename' => $filename,
+        'status' => 1
+      ))
+      ->condition('fid', $file->fid)
+      ->execute();
+  }
+  return t('Photos image titles migrated successfully!');
+}
+
+/**
+ * Update {photos_image}.wid from tinyint to int. Rename {photos_vote} to {photos_comment}.
+ */
+function photos_update_7301() {
+  // Update wid from tinyint to int.
+  db_drop_index('photos_image', 'wid');
+  $spec = array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0
+  );
+  $index = array(
+    'indexes' => array('wid' => array('wid'))
+  );
+  db_change_field('photos_image', 'wid', 'wid', $spec, $index);
+  // Rename photos_vote to photos_comment
+  if (db_table_exists('photos_vote')) {
+    if (db_table_exists('photos_comment')) db_drop_table('photos_comment');
+    db_rename_table('photos_vote', 'photos_comment');
+  }
+  return t('Successfully updated image weight field!');
+}
+
+/**
+ * Add {photos_album}.wid to help sort albums by weight.
+ */
+function photos_update_7302() {
+  if (!db_field_exists('photos_album', 'wid')) {
+    // Add album wid.
+    $spec = array(
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0
+    );
+    db_add_field('photos_album', 'wid', $spec);
+    db_add_index('photos_album', 'wid', array('wid'));
+    return t('Successfully added album weight field!');
+  }
+}
+
+/**
+ * Add {photos_node}.wid to help sort images in sub-albums by weight.
+ */
+function photos_update_7303() {
+  if (!db_field_exists('photos_node', 'wid')) {
+    // Add album wid.
+    $spec = array(
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0
+    );
+    db_add_field('photos_node', 'wid', $spec);
+    db_add_index('photos_node', 'wid', array('wid'));
+    return t('Successfully added weight field!');
+  }
+}

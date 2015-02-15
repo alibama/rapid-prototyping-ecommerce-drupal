@@ -1,0 +1,27 @@
+--- README.txt
++++ README.txt
+@@ -7,16 +7,22 @@
+ This module requires the Services module and serves as a server plug-in to that module.
+ You do not need to enable the rest_server or xmlrpc_server components.
+ 
++This module requires Intuit's PHP DevKit for variable casting:
++https://code.intuit.com/sf/sfmain/do/viewProject/projects.php_devkit
++
++IMPORTANT: PHPDevkit be installed in a specific subfolder of Drupal's root folder:
++require_once DRUPAL_ROOT . '/quickbooks-php-devkit/QuickBooks.php';
++
+ Using the Manage Quickbooks Exports admin page will queue existing orders and products.
+ Customers are automatically queued for export with orders.
+ Existing payments will not be queued. (Feature request)
+ 
+-Going forward new orders/products/customers/payments will be queued on creation (insert) as part of
++Going forward new orders/products/customers/payments will be queued on creation (insert) as part of
+ Drupal Commerce API hooks.
+ 
+ Failed exports will be flagged and automatically re-exported upon next sync.
+ Authentication triggers all exports in ERROR status to be reset to PENDING
+-Watchdog (Reports -> Recent log messages) will capture errors and should be checked after each sync.
++Watchdog (Reports\Recent log messages) will capture errors and should be checked after each sync.
+ 
+ Error 3100 (Item already exists) will be treated as a successful export (Add Customer, Add product, etc.)
+ This module tracks successful exports to avoid duplication but Quickbooks itself does not prevent

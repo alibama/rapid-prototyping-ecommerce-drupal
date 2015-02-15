@@ -1,0 +1,325 @@
+<?php
+// @note: More features, please try the patch: http://drupal.org/node/324497#comment-1102758
+
+/**
+ * Implements hook_menu().
+ */
+function photos_swfu_menu() {
+  $items = array();
+  $items['photos_swfu/upload'] = array(
+    'page callback' => 'photos_swfu_upload',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['photos_swfu/upload/%node'] = array(
+    'page callback' => 'photos_swfu_upload',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function photos_swfu_theme($existing, $type, $theme, $path) {
+  return array(
+    'photos_swfu_style' => array(
+      'template' => 'photos_swfu_style',
+      'variables' => array('v' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function photos_swfu_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == "photos_upload_form") {
+    if (isset($form['new']['pid']['#value']) && is_numeric($form['new']['pid']['#value'])) {
+      $pid = $form['new']['pid']['#value'];
+    }
+    elseif (isset($_GET['pid'])) {
+      $pid = $_GET['pid'];
+    }
+    $swfu_switch = isset($_SESSION['photos_swfu_switch']) ? $_SESSION['photos_swfu_switch'] : 0;
+    if ($swfu_switch <> 1) {
+      if (isset($form['new']['pid']['#value']) && !$pid = $form['new']['pid']['#value']) {
+        $nid = $form['new']['nid']['#value'];
+        if (!$pid = $form['new']['pid']['#default_value']) {
+          if ($form['new']['pid']['#options'][0]->option) {
+            $array = array_keys($form['new']['pid']['#options'][0]->option);
+            $pid = $array[0];
+          }
+          else {
+            return;
+          }
+        }
+      }
+      unset($form['date']);
+      unset($form['new']['submit']);
+      for ($i = 0; $i < variable_get('photos_num', 5); ++$i) {
+        unset($form['new']['images_' . $i]);
+        unset($form['new']['title_' . $i]);
+        unset($form['new']['des_' . $i]);
+      }
+    }
+
+    $pid = (isset($pid)) ? $pid : 0;
+    $nid = (!empty($nid)) ? $nid : $pid;
+    $form['new'] += photos_swfu_form($pid, $nid);
+  }
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function photos_swfu_libraries_info() {
+  $libraries['swfupload'] = array(
+    'name' => 'SWFUpload',
+    'vendor url' => 'http://code.google.com/p/swfupload/',
+    'download url' => 'http://code.google.com/p/swfupload/downloads/list',
+    'version arguments' => array(
+      'file' => 'swfupload.js',
+      'pattern' => '/SWFUpload.version \= \"([0-9.]{1,}) ([0-9-]{1,})\"/',
+      'lines' => 60,
+    ),
+    'files' => array(
+      'js' => array(
+        'swfupload.js',
+        'plugins/swfupload.queue.js',
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+/**
+ * Build SWFU form.
+ */
+function photos_swfu_form($pid = 0, $nid = 0) {
+  global $user, $language;
+
+  $swfu_switch = isset($_SESSION['photos_swfu_switch']) ? $_SESSION['photos_swfu_switch'] : 0;
+  if ($swfu_switch <> 1) {
+    drupal_add_css(drupal_get_path('module', 'photos_swfu') . '/photos_swfu.css');
+    drupal_add_js(drupal_get_path('module', 'photos_swfu') . '/fileprogress.js');
+    drupal_add_js(drupal_get_path('module', 'photos_swfu') . '/handlers.js');
+    $v = array();
+    $op = array();
+    $op['query']['uid'] = $user->uid;
+    if ($nid) $op['query']['nid'] = $nid;
+    $v['url'] =  url('photos_swfu/upload/' . $pid, $op);
+    $path = drupal_get_path('module', 'photos_swfu');
+    if (is_file($path . '/button/' . $language->language . '_61x22.png')) {
+      $v['image'] = base_path() . $path . '/button/' . $language->language . '_61x22.png';
+    }
+    else {
+      $v['image'] = base_path() . $path . '/XPButtonUploadText_61x22.png';
+    }
+    if (($library = libraries_load('swfupload')) && !empty($library['loaded'])) {
+      // Avoid conflict with libraries module and swfupload module.
+      drupal_add_js($library['library path'] . '/plugins/swfupload.queue.js');
+      $v['swf'] = base_path() . $library['library path'] . '/Flash/swfupload.swf';
+    }
+    else {
+      if ($user->uid == 1) {
+        drupal_set_message(t('Please add swfupload to the sites/all/libraries directory.'), 'error');
+      }
+    }
+    if (arg(1) == 'quote') {
+      $v['href']= url($_GET['q'], array('query' => array('type' => 'upload')));
+    }
+    else {
+      $v['href'] = url($_GET['q'], array('query' => array('type' => 'tx')));
+    }
+    if ($user->uid == 1) {
+      $v['max_file_size'] = '200';
+      $v['num_uploads'] = '0';
+    }
+    else {
+      // @todo set global limits?
+      // $limits = _upload_file_limits($user);
+      $v['max_file_size'] = '200'; // $limits['file_size'] / 1024 / 1024;
+      $v['num_uploads'] = variable_get('photos_swfu_num', 50);
+    }
+    $form['new']['swfu'] = array(
+      '#markup' => theme('photos_swfu_style', array('v' => $v)),
+      '#weight' => -1
+    );
+    $svluae = t('Click here to switch to the classic upload form.');
+  }
+  else {
+    $svluae = t('Click here to switch back to the flash form.');
+  }
+  $form['button']['#weight'] = -10;
+  $form['button']['switch'] = array(
+    '#type' => 'submit',
+    '#value' => $svluae,
+    '#submit' => array('_photos_swfu_switch'),
+    '#weight' => -20,
+  );
+
+  return $form;
+}
+
+/**
+ * SWFUpload switch.
+ */
+function _photos_swfu_switch() {
+  $swfu_switch = isset($_SESSION['photos_swfu_switch']) ? $_SESSION['photos_swfu_switch'] : 0;
+  if ($swfu_switch <> 1) {
+    $_SESSION['photos_swfu_switch'] = 1;
+    drupal_set_message(t('HTML form.'));
+  }
+  else {
+    $_SESSION['photos_swfu_switch'] = 0;
+    drupal_set_message(t('Flash upload form.'));
+  }
+}
+
+/**
+ * Upload photos with SWFUpload.
+ */
+function photos_swfu_upload($node = 0) {
+  if ($_GET['uid'] && $node) {
+    $query = db_select('users', 'u');
+    $query->join('sessions', 's', 's.uid = u.uid');
+    $query->fields('s', array('uid'))
+      ->fields('u', array('name'))
+      ->condition('s.sid', $_POST['PHPSESSID'])
+      ->condition('s.hostname', ip_address());
+    $ac = $query->execute()->fetchObject();
+    if ($_GET['uid'] == $ac->uid) {
+      $ac->roles = array();
+      $ac->roles[DRUPAL_AUTHENTICATED_RID] = 'authenticated user';
+      $query = db_select('role', 'r');
+      $query->join('users_roles', 'ur', 'ur.rid = r.rid');
+      $query->fields('r', array('rid', 'name'))
+        ->condition('ur.uid', $_GET['uid']);
+      $result = $query->execute();
+      foreach ($result as $role) {
+        $ac->roles[$role->rid] = $role->name;
+      }
+      $file = new stdClass();
+      if (node_access('update', $node, $ac) && $node->type == 'photos') {
+        $file->pid = $node->nid;
+        if ($_GET['nid']) {
+          $photo = node_load($_GET['nid']);
+          if (node_access('update', $photo, $ac)) {
+            $file->nid = $photo->nid;
+          }
+          else {
+            watchdog('photos_swfu', 'User do not have permission to update the node');
+            return header("HTTP/1.0 403.3 Internal Server Error");
+          }
+        }
+      }
+      else {
+        watchdog('photos_swfu', 'User do not have permission to update the node');
+        return header("HTTP/1.0 403.3 Internal Server Error");
+      }
+      if (is_uploaded_file($_FILES['Filedata']['tmp_name']) && !$_FILES['Filedata']['error']) {
+        $file->uri = file_destination(photos_check_path('default', '', $ac) . '/' . trim(basename(_photos_rename($_FILES['Filedata']['name']))), FILE_EXISTS_RENAME);
+        if (file_unmanaged_move($_FILES['Filedata']['tmp_name'], $file->uri)) {
+          $info = image_get_info($file->uri);
+          if ($info['extension'] && $info['width']) {
+            // @todo add limits?
+            // $limits = _upload_file_limits($ac);
+            /* $validators = array(
+              // 'file_validate_image_resolution' => array($limits['resolution']),
+              // '_file_validate_size' => array($limits['file_size'], $limits['user_size'], $ac)
+            ); */
+            $file->uid = $ac->uid;
+            $file->filename = $_FILES['Filedata']['name'];
+            $file->filesize = $info['file_size'];
+            $file->filemime = $info['mime_type'];
+            if ($file->fid = _photos_save_data($file)) {
+              photos_image_date($file);
+              $output = 'File uploaded successfully!';
+              return $output;
+            }
+          }
+          else {
+            file_delete($file->uri);
+            watchdog('photos_swfu', 'Wrong file type');
+            return header("HTTP/1.0 403.3 Internal Server Error");
+          }
+        }
+        else {
+          watchdog('photos_swfu', 'Upload error. 2');
+          return header("HTTP/1.0 403.3 Internal Server Error");
+        }
+      }
+      else {
+        $error = '';
+        if ($_FILES['Filedata']['error'] == 1) {
+          $error = ' ' . t('Check file size and php.ini settings for upload_max_filesize.');
+        }
+        watchdog('photos_swfu', 'Upload error.' . $error);
+        return header("HTTP/1.0 403.3 Internal Server Error");
+      }
+    }
+    else {
+      watchdog('photos_swfu', 'Upload path may have been illegally modified');
+      return header("HTTP/1.0 530 Internal Server Error");
+    }
+  }
+  watchdog('photos_swfu', 'Album or user is not correct');
+  return header("HTTP/1.0 530 Internal Server Error");
+}
+
+/**
+ * Copy file file_save_upload.
+ */
+function _photos_swfu_error($error, $source) {
+  switch ($error) {
+    case UPLOAD_ERR_OK:
+      break;
+    case UPLOAD_ERR_INI_SIZE:
+    case UPLOAD_ERR_FORM_SIZE:
+      return t('The file %file could not be saved, because it exceeds %maxsize, the maximum allowed size for uploads.', array('%file' => $source, '%maxsize' => format_size(file_upload_max_size())));
+    case UPLOAD_ERR_PARTIAL:
+    case UPLOAD_ERR_NO_FILE:
+      return t('The file %file could not be saved, because the upload did not complete.', array('%file' => $source));
+      // Unknown error
+    default:
+      return t('The file %file could not be saved. An unknown error has occurred.', array('%file' => $source));
+  }
+}
+
+/**
+ * Copy file_validate_size.
+ */
+function _file_validate_size($file, $file_limit = 0, $user_limit = 0, $ac = FALSE) {
+  if (!$ac) $ac = $GLOBALS['user'];
+  $errors = array();
+  if ($ac->uid != 1) {
+    if ($file_limit && $file->filesize > $file_limit) {
+      $errors[] = t('The file is %filesize exceeding the maximum file size of %maxsize.', array('%filesize' => format_size($file->filesize), '%maxsize' => format_size($file_limit)));
+    }
+
+    $total_size = file_space_used($ac->uid) + $file->filesize;
+    if ($user_limit && $total_size > $user_limit) {
+      $errors[] = t('The file is %filesize which would exceed your disk quota of %quota.', array('%filesize' => format_size($file->filesize), '%quota' => format_size($user_limit)));
+    }
+  }
+  return $errors;
+}
+
+/**
+ * Implements hook_init().
+ */
+function photos_swfu_init() {
+  if (!empty($_FILES['Filedata']) && module_exists('transliteration')) {
+    require_once(drupal_get_path('module', 'transliteration') . '/transliteration.inc');
+    $langcode = NULL;
+    if (!empty($_POST['language'])) {
+      $languages = language_list();
+      $langcode = isset($languages[$_POST['language']]) ? check_plain($_POST['language']) : NULL;
+    }
+    $_FILES['Filedata']['name'] = transliteration_clean_filename($_FILES['Filedata']['name'], $langcode);
+  }
+}

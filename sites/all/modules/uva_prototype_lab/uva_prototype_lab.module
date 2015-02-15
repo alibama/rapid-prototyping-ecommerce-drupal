@@ -1,0 +1,77 @@
+<?php
+
+function uva_prototype_lab_rules_action_info() {
+  return array(
+      'uva_calculate_volume' => array(
+          'label' => t('Calculate STL object volume'),
+          'group' => t('Commerce Line Item'),
+          'parameter' => array(
+              'line_item' => array(
+                  'type' => 'commerce_line_item',
+                  'label' => t('Commerce Line Item'),
+                  'description' => t('The line item with uploaded STL file.'),
+              )
+          ),
+      ),
+  );
+}
+
+function uva_calculate_volume($line_item) {
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $stl_file = $line_item_wrapper->field_custom_stl_file->value();
+  $file = file_load($stl_file['fid']);
+  if ($file !== FALSE) {
+    $path = drupal_realpath($file->uri);
+    list($volume, $box) = get_stl_volume_size($path);
+    $line_item_wrapper->field_volume->set($volume);
+    $box_text = implode(" x ", $box);
+    $line_item_wrapper->field_size->set($box_text);
+    $line_item_wrapper->save();
+  }
+}
+
+function get_stl_volume_size($filepath) {
+  module_load_include('inc', 'uva_prototype_lab', 'includes/stlstats');
+  $stats = new STLStats($filepath);
+  $box = $stats->getBBox('cm');
+  foreach ($box as $dim => $val) {
+    $box[$dim] = round($val, 2);
+  }
+  return array(round($stats->getVolume(), 2), $box);
+}
+
+function uva_prototype_lab_form_commerce_cart_add_to_cart_form_alter(&$form, &$form_state, $form_id) {
+  // drupal_add_js('jQuery(document).ready(function() {jQuery("input[type=\'file\']").change(function(){jQuery("#edit-line-item-fields-field-custom-stl-file-und-0-upload-button").trigger("click");});});', 'inline');
+}
+
+function uva_prototype_lab_form_commerce_order_ui_order_form_alter(&$form, &$form_state, $form_id) {
+  if (drupal_get_title() != t("Reply to a request")) {
+    return;
+  }
+  unset($form['commerce_customer_billing']);
+  unset($form['commerce_coupons']);
+  unset($form['commerce_discounts']);
+  unset($form['commerce_line_items'][LANGUAGE_NONE]['actions']);
+  unset($form['field_commerce_billy_cancel_date']);
+  unset($form['field_commerce_billy_i_date']);
+  $form['order_status']['status']['#default_value'] = "quotation_response";
+  $form['actions']['submit']["#suffix"] = l(t("Cancel"), "all_quotes");
+  $form_state['redirect'] = "all_quotes";
+}
+
+function uva_prototype_lab_views_api() {
+    return array(
+        'api' => 3,
+    );
+}
+
+function uva_prototype_lab_entity_property_info_alter(&$info) {
+    $info['commerce_line_item']['properties']['volume_unit'] = array(
+        'label' => t('Volume units'),
+        'type' => 'text',
+        'schema field' => 'volume_unit',
+        'description' => t('The units this line item uses for volume calculation.'),
+        'setter callback' => 'entity_property_verbatim_set',
+        'getter callback' => 'entity_property_verbatim_get',
+    );
+}

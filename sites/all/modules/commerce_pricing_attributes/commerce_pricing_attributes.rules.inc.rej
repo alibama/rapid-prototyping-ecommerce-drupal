@@ -1,0 +1,28 @@
+--- commerce_pricing_attributes.rules.inc
++++ commerce_pricing_attributes.rules.inc
+@@ -73,8 +73,23 @@
+                 $attribute['set_details'][$field_name]['options'][$selected_option]['currency_code'] = $default_currency_code;
+               }
+ 
+-              // $price = $attribute['set_details'][$field_name]['options'][$selected_option]['price'];
+-              $price = commerce_currency_convert($attribute['set_details'][$field_name]['options'][$selected_option]['price'], $attribute['set_details'][$field_name]['options'][$selected_option]['currency_code'], $covert_to_currency);
++              $price_op = $attribute['set_details'][$field_name]['options'][$selected_option]['price_op'];
++              $attribute_value = $attribute['set_details'][$field_name]['options'][$selected_option]['price'];
++              $attribute_currency = $attribute['set_details'][$field_name]['options'][$selected_option]['currency_code'];
++
++              if ($price_op == 'plus_percent' || $price_op == 'minus_percent') {
++                // Calculate the amount to add or remove based on a percentage
++                // of the current line item price.
++                $percent = commerce_currency_amount_to_decimal($attribute_value, $attribute_currency) / 100;
++                $price = $line_item_wrapper->commerce_unit_price->amount->value() * $percent;
++                // Change the price_op value so that later logic recognizes
++                // the 'plus' or 'minus' operand
++                $price_op = $price_op == 'plus_percent' ? 'plus' : 'minus';
++              } else {
++                // Convert the price difference into the currency used by this
++                // line item
++                $price = commerce_currency_convert($attribute_value, $attribute_currency, $covert_to_currency);
++              }
+ 
+               if($price > 0){
+                 // If the attribute price must be calculated per order then

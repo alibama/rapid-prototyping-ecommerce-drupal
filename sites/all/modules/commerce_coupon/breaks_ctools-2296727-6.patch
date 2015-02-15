@@ -1,0 +1,13 @@
+diff --git a/commerce_coupon.install b/commerce_coupon.install
+index da1dca3..9965c49 100644
+--- a/commerce_coupon.install
++++ b/commerce_coupon.install
+@@ -167,7 +167,7 @@ function commerce_coupon_schema() {
+     'foreign keys' => array(
+       'uid' => array(
+         'table' => 'users',
+-        'column' => array('uid' => 'uid')
++        'columns' => array('uid' => 'uid')
+       ),
+     ),
+     'unique keys' => array(

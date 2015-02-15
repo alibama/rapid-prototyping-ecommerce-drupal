@@ -1,0 +1,12 @@
+name = Thingiview.js viewer
+description = Provides Thingiview.js as a formatter to visualize 3D Models.
+core = 7.x
+dependencies[] = v3dm
+package = 3D
+
+; Information added by drupal.org packaging script on 2013-09-28
+version = "7.x-1.0"
+core = "7.x"
+project = "v3dm"
+datestamp = "1380392935"
+

@@ -1,0 +1,100 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the Photos Access module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function photos_access_schema() {
+  $schema['photos_access_album'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'viewid' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'length' => 1,
+        'default' => 0,
+        'description' => '0: Open, 1: Locked, 2: Password, 3: User list'
+      ),
+      'updateid' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'length' => 1,
+        'default' => 0
+      ),
+      'pass' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'default' => ''
+      ),
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+    'primary key' => array('id'),
+  );
+
+  $schema['photos_access_user'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+    ),
+    'indexes' => array(
+      'uid' => array('uid'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_disable().
+ */
+function photos_access_disable() {
+  if (module_exists('photos')) {
+    variable_set('photos_access_photos', 0);
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function photos_access_uninstall() {
+  $types = node_type_get_types();
+  foreach ($types as $type) {
+    variable_del('photos_access_' . $type->type);
+  }
+}
+
+/**
+ * Upgrade Photos Access from D6 to D7.
+ */
+function photos_access_update_7000() {
+  if (db_table_exists('x_album_ac')) {
+    // Drop all new empty tables.
+    db_drop_table('photos_access_album');
+    db_drop_table('photos_access_user');
+
+    // Rename existing tables.
+    db_rename_table('x_album_ac', 'photos_access_album');
+    db_rename_table('x_album_acuser', 'photos_access_user');
+  }
+}

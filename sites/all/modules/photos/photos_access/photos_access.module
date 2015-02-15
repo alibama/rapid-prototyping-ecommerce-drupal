@@ -1,0 +1,719 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function photos_access_menu() {
+  $items['privacy/pass/%/%node'] = array(
+    'title' => 'Please enter password', 
+    'page callback' => 'photos_access_page',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['admin/config/media/photos/privacy'] = array(
+    'title' => 'Privacy',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('photos_access_admin_settings'),
+    'access arguments' => array('administer nodes'),
+    'type' => MENU_LOCAL_TASK,
+  );
+   $items['photos-access/user/autocomplete/multiple'] = array(
+    'title' => 'Multiple users autocomplete',
+    'page callback' => 'photos_access_multiple_users_autocomplete',
+    'access arguments' => array('access user profiles'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Admin form items.
+ */
+function photos_access_admin_settings() {
+  $form = array();
+  $form['privacy'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Privacy settings'),
+    '#description' => t('Enabled photos access privacy settings for the following content types.')
+  );
+  $types = node_type_get_types();
+  foreach ($types as $type) {
+    $form['privacy']['photos_access_' . $type->type] = array(
+      '#title' => $type->name,
+      '#type' => 'checkbox',
+      '#default_value' => variable_get('photos_access_' . $type->type, 0),
+    );
+  }
+
+  return system_settings_form($form);
+}
+
+/**
+ * Autocomplete multiple comma-separated usernames.
+ */
+function photos_access_multiple_users_autocomplete($string = '') {
+  $array = drupal_explode_tags($string);
+  $last_string = trim(array_pop($array));
+  $matches = array();
+
+  if ($last_string != '') {
+    $result = db_select('users')
+      ->fields('users', array('name'))
+      ->condition('name', db_like($last_string) . '%', 'LIKE')
+      ->range(0, 10)
+      ->execute();
+    $prefix = count($array) ? implode(', ', $array) . ', ' : '';
+    foreach ($result as $user) {
+      $n = $user->name;
+      $matches[$prefix . $n] = $user->name;
+    }
+  }
+
+  drupal_json_output($matches);
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function photos_access_form_alter(&$form, &$form_state, $form_id) {
+  global $user;
+  if (isset($form['type']) && isset($form['#node'])) {
+    $node = $form['#node'];
+    $nid = isset($node->nid) ? $node->nid : 0;
+    if (variable_get('photos_access_' . $node->type, 0)) {
+      $form['privacy'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Privacy'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+        '#weight' => -2,
+        '#tree' => TRUE,
+      );
+      $form['privacy']['vid'] = array('#type' => 'value', '#value' => isset($node->privacy['vid']) ? $node->privacy['vid'] : 0);
+      $form['privacy']['eid'] = array('#type' => 'value', '#value' => isset($node->privacy['eid']) ? $node->privacy['eid'] : 0);
+      if ($nid && !isset($_SESSION['photos_access_' . $node->nid])) {
+        $_SESSION['photos_access_' . $node->nid] = isset($node->privacy) ? $node->privacy : '';
+      }
+      $old = ($nid && isset($_SESSION['photos_access_' . $nid])) ? $_SESSION['photos_access_' . $nid] : array();
+      $form['privacy']['viewid'] = array(
+        '#type' => 'radios',
+        '#title' => t('Privacy'),
+        '#default_value' => isset($node->privacy['viewid']) ? $node->privacy['viewid'] : 0,
+        '#options' => array(t('Open'), t('Locked'), t('Designated users'), t('Password required')),
+        '#prefix' => '<div id="photos_access_privacy">',
+        '#suffix' => '</div>',
+      );
+      $form['privacy']['pass'] = array(
+        '#type' => 'password',
+        '#title' => t('Password'),
+        '#default_value' => isset($node->privacy['pass']) ? $node->privacy['pass'] : '',
+        '#prefix' => '<div id="photos_access_password">',
+        '#suffix' => '</div>',
+      );
+      $userhelp = t('Separated by commas. eg: username1,username2,username3.');
+      $form['privacy']['viewuser'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Designated users'),
+        '#autocomplete_path' => 'photos-access/user/autocomplete/multiple',
+        '#default_value' => (isset($node->privacy['viewuser']) && !is_array($node->privacy['viewuser'])) ? $node->privacy['viewuser'] : NULL,
+        '#description' => t('Add people who will have access to view this node.') . ' ' . (isset($old['viewuser']) ? t('@help At present allow users:', array('@help' => $userhelp)) . ' ' : $userhelp),
+        '#prefix' => '<div id="photos_access_viewuser">',
+        '#suffix' => '</div>'
+      );
+      if (!empty($old['viewuser'])) {
+        foreach ($old['viewuser'] as $u) {
+          $form['privacy']['viewremove'][$u->uid] = array(
+            '#type' => 'checkbox',
+            '#default_value' => isset($node->viewremove[$u->uid]) ? $node->viewremove[$u->uid] : '',
+            '#title' => t('Delete: !name', array('!name' => $u->username)),
+            '#prefix' => '<div class="photos_access_remove">',
+            '#suffix' => '</div>',
+          );
+        }
+      }
+      $form['privacy']['updateuser'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Add collaborators'),
+        '#autocomplete_path' => 'photos-access/user/autocomplete/multiple',
+        '#default_value' => (isset($node->privacy['updateuser']) && !is_array($node->privacy['updateuser'])) ? $node->privacy['updateuser'] : NULL,
+        '#description' => t('Add people who will have the authority to edit this node.') . ' ' . (isset($old['updateuser']) ? t('@help collaboration users list:', array('@help' => $userhelp)) . ' ' : $userhelp),
+      );
+      if (!empty($old['updateuser'])) {
+        foreach ($old['updateuser'] as $u) {
+          $form['privacy']['updateremove'][$u->uid] = array(
+            '#type' => 'checkbox',
+            '#default_value' => isset($node->updateremove[$u->uid]) ? $node->updateremove[$u->uid] : '',
+            '#title' => t('Delete: !name', array('!name' => $u->username)),
+            '#prefix' => '<div class="photos_access_updateremove">',
+            '#suffix' => '</div>',
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Validate user access to node.
+ */
+function _photos_access_user_validate($privacy, $oldprivacy) {
+  global $user;
+  $t = preg_split('/,|，/', $privacy);
+  $name = array();
+  if (is_array($oldprivacy)) {
+    foreach ($oldprivacy as $list) {
+      $name[] = $list->name;
+    }
+  }
+  $output = '';
+  foreach ($t as $a) {
+    $a = trim($a);
+    if ($a <> $user->name) {
+      if (in_array($a, $name)) {
+        $output = t('Users already on the list: %name.', array('%name' => $a));
+      }
+      elseif (!$u = _photos_access_user(array('name' => $a))) {
+        $output = t('The user does not exist: %name.', array('%name' => $a));
+      }
+    }
+    else {
+       $output = t("You do not need to add your self to this list.");
+    }
+  }
+
+  return $output;
+}
+
+/**
+ * Implements hook_node_validate().
+ */
+function photos_access_node_validate($node, $form, &$form_state) {
+  $old = isset($_SESSION['photos_access_' . $node->nid]) ? $_SESSION['photos_access_' . $node->nid] : array();
+  if (isset($node->privacy['updateuser']) && !empty($node->privacy['updateuser'])) {
+    $old_check = isset($old['updateuser']) ? $old['updateuser'] : array();
+    if ($userdate = _photos_access_user_validate($node->privacy['updateuser'], $old_check)) {
+      form_set_error('privacy][updateuser', $userdate);
+    }
+  }
+  if (isset($node->privacy['viewid']) && $node->privacy['viewid'] == 2) {
+    if (isset($node->privacy['viewuser']) && !empty($node->privacy['viewuser'])) {
+      $old_check = isset($old['viewuser']) ? $old['viewuser'] : array();
+      if ($userdate = _photos_access_user_validate($node->privacy['viewuser'], $old_check)) {
+        form_set_error('privacy][viewuser', $userdate);
+      }
+    }
+  }
+}
+
+/**
+ * Update access to album.
+ */
+function photos_access_update_access($node) {
+  if (variable_get('photos_access_' . $node->type, 0)) {
+    if (!$node->privacy['eid']) {
+      if ($node->privacy['updateuser']) {
+        // db_query('INSERT INTO {photos_access_album} (id, nid, pass, updateid) VALUES (NULL, :nid, 1, 1)', array(':nid' => $node->nid));
+        // $acc['updateid'] = db_last_insert_id('photos_access_album', 'id');
+        $acc['updateid'] = db_insert('photos_access_album')
+          ->fields(array(
+            'nid' => $node->nid,
+            'pass' => 1,
+            'updateid' => 1
+          ))
+          ->execute();
+        _photos_access_usersave($node->privacy['updateuser'], $acc['updateid']);
+      }
+    }
+    else {
+      $remove = FALSE;
+      if (isset($node->privacy['updateremove']) && !empty($node->privacy['updateremove'])) {
+        $remove = _photos_access_usersdel($node->privacy['updateremove'], $node->privacy['eid']);
+      }
+      if (isset($node->privacy['updateuser']) && !empty($node->privacy['updateuser'])) {
+        _photos_access_usersave($node->privacy['updateuser'], $node->privacy['eid']);
+        db_query('UPDATE {photos_access_album} SET pass = 1 WHERE id = :id', array(':id' => $node->privacy['eid']));
+      }
+      elseif ($remove) {
+        db_query('UPDATE {photos_access_album} SET pass = 0 WHERE id = :id', array(':id' => $node->privacy['eid']));
+      }
+      $acc['updateid'] = $node->privacy['eid'];
+    }
+
+    if (!$node->privacy['vid']) {
+      $acc['viewid'] = db_insert('photos_access_album')
+        ->fields(array(
+          'nid' => $node->nid,
+          'viewid' => isset($node->privacy['viewid']) ? $node->privacy['viewid'] : '',
+          'pass' => isset($node->privacy['pass']) ? md5($node->privacy['pass']) : 0
+        ))
+        ->execute();
+      if ($node->privacy['viewid'] && $node->privacy['viewuser']) {
+        _photos_access_usersave($node->privacy['viewuser'], $acc['viewid']);
+      }
+    }
+    else {
+      switch ($node->privacy['viewid']) {
+        case 0:
+        case 1:
+          db_query('UPDATE {photos_access_album} SET viewid = :viewid WHERE id = :id',
+            array(
+              ':viewid' => $node->privacy['viewid'],
+              ':id' => $node->privacy['vid']
+            )
+          );
+          _photos_access_usersdel(0, $node->privacy['vid'], 1);
+      break;
+      case 2:
+        db_query('UPDATE {photos_access_album} SET viewid = :viewid WHERE id = :id',
+          array(
+            ':viewid' => $node->privacy['viewid'],
+            ':id' => $node->privacy['vid']
+          )
+        );
+        if ($node->privacy['viewuser']) {
+          _photos_access_usersave($node->privacy['viewuser'], $node->privacy['vid']);
+        }
+        if (isset($node->privacy['viewremove'])) {
+          _photos_access_usersdel($node->privacy['viewremove'], $node->privacy['vid']);
+        }
+      break;
+      case 3:
+        $old = isset($_SESSION['photos_access_' . $node->nid]) ? $_SESSION['photos_access_' . $node->nid] : array();
+        $old_pass = isset($old['pass']) ? $old['pass'] : '';
+        $pass = isset($node->privacy['pass']) ? md5($node->privacy['pass']) : $old_pass;
+        db_query("UPDATE {photos_access_album} SET viewid = :viewid, pass = :pass WHERE id = :id",
+          array(
+            ':viewid' => $node->privacy['viewid'],
+            ':pass' => $pass,
+            ':id' => $node->privacy['vid']
+          )
+        );
+        _photos_access_usersdel(0, $node->privacy['vid'], 1);
+      }
+      $acc['viewid'] = $node->privacy['viewid'];
+      $acc['vid'] = $node->privacy['vid'];
+    }
+    $_SESSION['photos_access_ac_' . $node->nid] = $acc;
+    unset($_SESSION['photos_access_' . $node->nid]);
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function photos_access_node_insert($node) {
+  photos_access_update_access($node);
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function photos_access_node_update($node) {
+  photos_access_update_access($node);
+}
+
+/**
+ * Implements hook_node_load().
+ */
+function photos_access_node_load($nodes, $types) {
+  foreach ($nodes as $nid => $node) {
+    $result = db_query('SELECT * FROM {photos_access_album} WHERE nid = :nid', array(':nid' => $nid));
+    $info = array();
+    foreach ($result as $a) {
+      if ($a->updateid) {
+        // Unique ID
+        $info['privacy']['eid'] = $a->id;
+        $info['privacy']['updateid'] = 1;
+        $info['privacy']['updateuser'] = _photos_access_userlist($a->id);
+      }
+      else {
+        $info['privacy']['vid'] = $a->id;
+        $info['privacy']['viewid'] = $a->viewid;
+      if ($a->viewid == 3) {
+        $info['privacy']['pass'] = $a->pass;
+      }
+      $info['privacy']['viewuser'] = _photos_access_userlist($a->id);
+      }
+    }
+    if (isset($info['privacy'])) {
+      $nodes[$nid]->privacy = $info['privacy'];
+    }
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function photos_access_node_delete($node) {
+  db_query('DELETE FROM {photos_access_album} WHERE nid = :nid', array(':nid' => $node->nid));
+  if (isset($node->privacy['vid'])) {
+    db_query('DELETE FROM {photos_access_user} WHERE id = :id', array(':id' => $node->privacy['vid']));
+  }
+  if (isset($node->privacy['eid'])) {
+    db_query('DELETE FROM {photos_access_user} WHERE id = :id', array(':id' => $node->privacy['eid']));
+  }
+}
+
+/**
+ * Delete user from album access list.
+ */
+function _photos_access_usersdel($value, $id, $type = 0) {
+  if ($type) {
+    db_query('DELETE FROM {photos_access_user} WHERE id = :id', array(':id' => $id));
+  }
+  elseif (is_array($value)) {
+    $count = count($value);
+    $i = 0;
+    foreach ($value as $key => $remove) {
+      if ($remove) {
+        ++$i;
+        db_query('DELETE FROM {photos_access_user} WHERE id = :id AND uid = :uid', array(':id' => $id, ':uid' => $key));
+      }
+    }
+    if ($count == $i) return TRUE;
+  }
+}
+
+/**
+ * List of users who have access to album.
+ */
+function _photos_access_userlist($id) {
+  $result = db_query('SELECT u.uid, u.name FROM {users} u INNER JOIN {photos_access_user} a ON u.uid = a.uid WHERE a.id = :id',
+    array(
+      ':id' => $id
+    )
+  );
+  $users = array();
+  foreach ($result as $a) {
+    $u = new stdClass();
+    $u = $a;
+    $u->username = theme('username', array('account' => $a));
+    $users[] = $u;
+  }
+  return $users;
+}
+
+/**
+ * Save users to access album list.
+ */
+function _photos_access_usersave($value, $id) {
+  $t = preg_split('/,|，/', $value);
+  if ($t) {
+    $values = array();
+    foreach ($t as $a) {
+      $a = trim($a);
+      // Check {users}.name
+      if ($u = _photos_access_user(array('name' => $a))) {
+        $values[] = array(
+          'id' => $id,
+          'uid' => $u->uid
+        );
+      }
+    }
+    if (isset($values[0])) {
+      // Insert users into photos access table.
+      $query = db_insert('photos_access_user')->fields(array('id', 'uid'));
+      foreach ($values as $record) {
+        $query->values($record);
+      }
+      $query->execute();
+    }
+  }
+}
+
+/**
+ * Implements hook_node_access_records().
+ */
+function photos_access_node_access_records($node) {
+  global $user;
+  if (variable_get('photos_access_' . $node->type, 0)) {
+    if (isset($node->privacy['vid'])) {
+      // @todo cleanup?
+      $acc['updateid'] = isset($node->privacy['eid']) ? $node->privacy['eid'] : 0;
+      $acc['viewid'] = isset($node->privacy['viewid']) ? $node->privacy['viewid'] : 0;
+      $acc['vid'] = $node->privacy['vid'];
+    }
+    else {
+      $acc = isset($_SESSION['photos_access_ac_' . $node->nid]) ? $_SESSION['photos_access_ac_' . $node->nid] : '';
+    }
+    if (isset($acc['vid']) || isset($acc['updateid'])) {
+      // Author has full access to all albums they create.
+      $grants[] = array(
+        'realm' => 'photos_access_author',
+        'gid' => $node->uid,
+        'grant_view' => 1,
+        'grant_update' => 1,
+        'grant_delete' => 1,
+        'priority' => 0,
+      );
+      // If viewid is 1:locked, only author can view it.
+      if ($acc['viewid'] <> 1) {
+        // Open is 0.
+        $photos_access_gid = 0;
+        if ($acc['viewid'] <> 0) {
+          // If not open use {node}.nid.
+          $photos_access_gid = $node->nid;
+        }
+        $grants[] = array(
+          'realm' => 'photos_access',
+          'gid' => $photos_access_gid,
+          'grant_view' => 1,
+          'grant_update' => 0,
+          'grant_delete' => 0,
+          'priority' => 0,
+        );
+      }
+      // Access for collaborators.
+      if (isset($acc['updateid']) && !empty($acc['updateid'])) {
+        $grants[] = array(
+          'realm' => 'photos_access_update',
+          'gid' => $node->nid,
+          'grant_view' => 1,
+          'grant_update' => 1,
+          'grant_delete' => 0,
+          'priority' => 0,
+        );
+      }
+      return $grants;
+    }
+    if (isset($_SESSION['photos_access_ac_' . $node->nid])) {
+      unset($_SESSION['photos_access_ac_' . $node->nid]);
+    }
+  }
+}
+
+/**
+ * Implements hook_photos_access().
+ */
+function photos_access_photos_access() {
+  if (arg(0) == 'node' && is_numeric(arg(1))) {
+    return arg(1);
+  }
+}
+
+/**
+ * Implements hook_node_grants().
+ */
+function photos_access_node_grants($ac, $op) {
+  // Always grant access to view open albums.
+  $viewid = array(0);
+
+  // Set uid for author realm to access own albums.
+  $grants['photos_access_author'] = array($ac->uid);
+
+  // Check for private albums that user has access to.
+  $result = db_query('SELECT a.* FROM {photos_access_album} a INNER JOIN {photos_access_user} b ON a.id = b.id WHERE b.uid = :uid',
+    array(
+      ':uid' => $ac->uid
+    )
+  );
+  foreach ($result as $a) {
+    if ($a->updateid) {
+      $updateid[] = $a->nid;
+    }
+    elseif ($a->viewid) {
+      $viewid[] = $a->nid;
+    }
+  }
+
+  // hook_photos_access()
+  // - Return array of nids to check for user access.
+  // - Only album nids that require password.
+  $args = module_invoke_all('photos_access');
+
+  if (is_array($args)) {
+    foreach ($args as $arg) {
+      $result = db_query('SELECT id, nid, viewid, pass FROM {photos_access_album} WHERE nid = :nid', array(':nid' => $arg));
+      foreach ($result as $a) {
+        // Password is required, check if password is set.
+        if ($a->viewid == 3 && isset($_SESSION[$a->nid . '_' . session_id()]) && $_SESSION[$a->nid . '_' . session_id()] == $a->pass) {
+          $viewid[] = $a->nid;
+        }
+      }
+    }
+  }
+
+  switch ($op) {
+    case 'view':
+      // Array of gid's for realm.
+      $grants['photos_access'] = $viewid;
+      if (isset($updateid[0])) {
+        $grants['photos_access_update'] = $updateid;
+      }
+    break;
+    case 'update':
+      if (isset($updateid[0])) {
+        $grants['photos_access_update'] = $updateid;
+      }
+    break;
+  }
+  return $grants;
+}
+
+/**
+ * Password entry page.
+ */
+function photos_access_page($node) {
+  if ($node) {
+    $output = drupal_get_form('photos_access_pass_form', $node);
+    return $output;
+  }
+  else {
+    drupal_not_found();
+  }
+}
+
+/**
+ * Password form.
+ */
+function photos_access_pass_form($form, &$form_state, $node) {
+  $form = array();
+  $form['pass'] = array(
+    '#type' => 'password',
+    '#title' => t('Please enter password'),
+  );
+  $form['nid'] = array(
+    '#type' => 'value',
+    '#value' => $node->nid,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  $form['#validate'][] = 'photos_access_pass_form_validate';
+  return $form;
+}
+
+/**
+ * Validate password.
+ */
+function photos_access_pass_form_validate($form, &$form_state) {
+  global $user;
+  $node = db_query("SELECT pass, nid FROM {photos_access_album} WHERE nid = :nid AND pass = :pass",
+    array(
+      ':nid' => $form_state['values']['nid'],
+      ':pass' => md5($form_state['values']['pass'])
+    )
+  )->fetchObject();
+  if (isset($node->pass)) {
+    $_SESSION[$node->nid . '_' . session_id()] = $node->pass;
+    drupal_goto('node/' . $node->nid); // $_GET['description']
+  }
+  else {
+    form_set_error('pass', t('Password required'));
+  }
+}
+
+/**
+ * Implements hook_init().
+ */
+function photos_access_init() {
+  global $user;
+  drupal_add_css(drupal_get_path('module', 'photos_access') . '/photos_access.css');
+  drupal_add_js(drupal_get_path('module', 'photos_access') . '/photos_access.js');
+  $args = module_invoke_all('photos_access');
+  if (is_array($args)) {
+    foreach ($args as $arg) {
+      if ($arg) {
+        $t = _photos_access_pass_type(arg(1));
+        if (isset($t['view'])) {
+          if ($t['view']->viewid == 3) { // $t['view']->pass <> $_SESSION[$t['view']->nid . '_' . session_id()]
+            photos_access_pass_validate($t);
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Check validation type.
+ */
+function _photos_access_pass_type($id, $op = 0) {
+  if ($op) {
+    //photos.module
+    $result = db_query('SELECT a.*, n.uid, n.type, n.status FROM {photos_access_album} a
+      INNER JOIN {node} n ON a.nid = n.nid INNER JOIN {photos_image} p ON a.nid = p.pid WHERE p.fid = :id',
+      array(
+        ':id' => $id
+      )
+    );
+  }
+  else {
+    $result = db_query('SELECT a.*, n.uid, n.type, n.status FROM {photos_access_album} a
+      INNER JOIN {node} n ON a.nid = n.nid WHERE a.nid = :id',
+      array(
+        ':id' => $id
+      )
+    );
+  }
+  $t = array();
+  foreach ($result as $ac) {
+    if ($ac->viewid == 3) {
+      // Password authentication.
+      $t['view'] = $ac;
+    }
+    elseif ($ac->updateid && $ac->pass) {
+      // Update privileges.
+      $t['update'] = $ac;
+    }
+    else {
+      // Pass to node_access verification.
+      $t['node'] = $ac;
+    }
+  }
+  return $t;
+}
+
+/**
+ * Check password on node page.
+ */
+function photos_access_pass_validate($t) {
+  global $user;
+  // Check if admin or author.
+  if ($user->uid == 1 || isset($t['view']->uid) && $t['view']->uid == $user->uid) return TRUE;
+  if (isset($t['update']->pass)) {
+    // Check if collaborator.
+    $result = db_query('SELECT uid FROM {photos_access_user} WHERE id = :id', array(':id' => $t['update']->id));
+    foreach ($result as $a) {
+      if ($a->uid == $user->uid) return TRUE;
+    }
+  }
+  if ($t['view']->nid) {
+    if (isset($_SESSION[$t['view']->nid . '_' . session_id()])) {
+      // Check if password matches node password.
+      if ($_SESSION[$t['view']->nid . '_' . session_id()] == $t['view']->pass) {
+        return TRUE;
+      }
+      // If password is set, but does not match re enter password.
+      drupal_set_message(t('Password has expired.'));
+      drupal_goto('privacy/pass/' . $t['view']->type . '/' . $t['view']->nid, array(
+        'query' => array(
+          'destination' => $_GET['q']
+        )
+      ));
+    }
+    else {
+      // If password is not set, password is required.
+      drupal_set_message(t('Password required.'));
+      drupal_goto('privacy/pass/' . $t['view']->type . '/' . $t['view']->nid, array(
+        'query' => array(
+          'destination' => $_GET['q']
+        )
+      ));
+    }
+  }
+}
+
+function _photos_access_user($u) {
+  if (isset($u['name'])) {
+    $ac = db_query("SELECT uid, name FROM {users} WHERE name = :name", array(':name' => $u['name']))->fetchObject();
+  }
+  elseif (isset($u['uid'])) {
+    $ac = db_query('SELECT uid, name FROM {users} WHERE uid = :uid', array(':uid' => $u['uid']))->fetchObject();
+  }
+  if (isset($ac->uid)) return $ac;
+}

@@ -1,0 +1,47 @@
+--- commerce_qb_webconnect.module
++++ commerce_qb_webconnect.module
+@@ -495,10 +532,10 @@
+  * Implements hook_commerce_payment_transaction_insert().
+  */
+ function commerce_qb_webconnect_commerce_payment_transaction_insert($transaction) {
+-  if (commerce_qb_webconnect_exportable_enabled('add_payment')
+-    && ($transaction->status == "success")
+-    && ($transaction->amount > 0)) {
+-    commerce_qb_webconnect_qb_export_save('add_payment', $transaction);
++  if (commerce_qb_webconnect_exportable_enabled('add_payment')) {
++  	if (($transaction->status == "success") && ($transaction->amount > 0)) {
++  	    commerce_qb_webconnect_qb_export_save('add_payment', $transaction);
++  	}
+   }
+ }
+ 
+@@ -1328,21 +1391,24 @@
+       $line_item_entity = commerce_line_item_load($line_item_id);
+       $lang = field_language('commerce_line_item', $line_item_entity, 'commerce_product');
+ 
+-      if ($line_item_entity->type == 'product') {
++      if (in_array($line_item_entity->type, commerce_product_line_item_types())) {
+         $product_id = $line_item_entity->commerce_product[$lang][0]['product_id'];
+         $product = commerce_product_load($product_id);
+ 
+         if ($product) {
+-
+           // either use product_id or line_item_id as a key
+           $key = ($array_key == 'product_id') ? $product_id : $line_item_id;
+           $products[$key] = $product;
+ 
+-          // insert quantity, initialize first for good measure.
++          // line item prices can be different than the product price,
++          // therefore we need to send the unit price.
++          $products[$key]->commerce_price = $line_item_entity->commerce_unit_price;
++
++          // insert quantity
+           if (!isset($products[$key]->quantity){
+             $products[$key]->quantity = 0;
+-          }
+-          $products[$key]->quantity += $line_item_entity->quantity;
++          }
++          $products[$key]->quantity = $line_item_entity->quantity;
+         }
+       }
+     }

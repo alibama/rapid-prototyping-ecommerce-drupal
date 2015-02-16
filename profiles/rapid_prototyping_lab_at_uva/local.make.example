@@ -1,0 +1,120 @@
+; rapid_prototyping_lab_at_uva make file for local development
+core = "7.x"
+api = "2"
+
+projects[drupal][version] = "7.x"
+; include the d.o. profile base
+includes[] = "drupal-org.make"
+
+; +++++ TODO modules without versions +++++
+
+projects[commerce_quikpay][version] = "" ; TODO add version
+projects[commerce_quikpay][subdir] = "custom"
+
+projects[commerce_quotes][version] = "" ; TODO add version
+projects[commerce_quotes][subdir] = "custom"
+
+projects[commerce_custom_product_line_item][version] = "" ; TODO add version
+projects[commerce_custom_product_line_item][subdir] = "custom"
+
+projects[commerce_custom_product_pricing][version] = "" ; TODO add version
+projects[commerce_custom_product_pricing][subdir] = "custom"
+
+projects[commerce_custom_product_pricing_er][version] = "" ; TODO add version
+projects[commerce_custom_product_pricing_er][subdir] = "custom"
+
+projects[commerce_custom_product_pricing_er_ui][version] = "" ; TODO add version
+projects[commerce_custom_product_pricing_er_ui][subdir] = "custom"
+
+projects[commerce_custom_product_pricing_ui][version] = "" ; TODO add version
+projects[commerce_custom_product_pricing_ui][subdir] = "custom"
+
+projects[uva_prototype_lab][version] = "" ; TODO add version
+projects[uva_prototype_lab][subdir] = "custom"
+
+projects[mupload][version] = "" ; TODO add version
+projects[mupload][subdir] = "custom"
+
+; +++++ Libraries +++++
+
+; jstorage
+libraries[jstorage][directory_name] = "jstorage"
+libraries[jstorage][type] = "library"
+libraries[jstorage][destination] = "libraries"
+libraries[jstorage][download][type] = "get"
+libraries[jstorage][download][url] = "" ; TODO add download URI
+
+; nivo-slider
+libraries[nivo-slider][directory_name] = "nivo-slider"
+libraries[nivo-slider][type] = "library"
+libraries[nivo-slider][destination] = "libraries"
+libraries[nivo-slider][download][type] = "get"
+libraries[nivo-slider][download][url] = "" ; TODO add download URI
+
+; underscore
+libraries[underscore][directory_name] = "underscore"
+libraries[underscore][type] = "library"
+libraries[underscore][destination] = "libraries"
+libraries[underscore][download][type] = "get"
+libraries[underscore][download][url] = "" ; TODO add download URI
+
+; modernizr
+libraries[modernizr][directory_name] = "modernizr"
+libraries[modernizr][type] = "library"
+libraries[modernizr][destination] = "libraries"
+libraries[modernizr][download][type] = "get"
+libraries[modernizr][download][url] = "" ; TODO add download URI
+
+; backbone
+libraries[backbone][directory_name] = "backbone"
+libraries[backbone][type] = "library"
+libraries[backbone][destination] = "libraries"
+libraries[backbone][download][type] = "get"
+libraries[backbone][download][url] = "" ; TODO add download URI
+
+; tcpdf
+libraries[tcpdf][directory_name] = "tcpdf"
+libraries[tcpdf][type] = "library"
+libraries[tcpdf][destination] = "libraries"
+libraries[tcpdf][download][type] = "get"
+libraries[tcpdf][download][url] = "" ; TODO add download URI
+
+; elfinder
+libraries[elfinder][directory_name] = "elfinder"
+libraries[elfinder][type] = "library"
+libraries[elfinder][destination] = "libraries"
+libraries[elfinder][download][type] = "get"
+libraries[elfinder][download][url] = "" ; TODO add download URI
+
+; MPDF57
+libraries[MPDF57][directory_name] = "MPDF57"
+libraries[MPDF57][type] = "library"
+libraries[MPDF57][destination] = "libraries"
+libraries[MPDF57][download][type] = "get"
+libraries[MPDF57][download][url] = "" ; TODO add download URI
+
+; dompdf
+libraries[dompdf][directory_name] = "dompdf"
+libraries[dompdf][type] = "library"
+libraries[dompdf][destination] = "libraries"
+libraries[dompdf][download][type] = "get"
+libraries[dompdf][download][url] = "" ; TODO add download URI
+
+; extjs
+libraries[extjs][directory_name] = "extjs"
+libraries[extjs][type] = "library"
+libraries[extjs][destination] = "libraries"
+libraries[extjs][download][type] = "get"
+libraries[extjs][download][url] = "" ; TODO add download URI
+
+; Mobile_Detect
+libraries[Mobile_Detect][directory_name] = "Mobile_Detect"
+libraries[Mobile_Detect][type] = "library"
+libraries[Mobile_Detect][destination] = "libraries"
+libraries[Mobile_Detect][download][type] = "get"
+libraries[Mobile_Detect][download][url] = "" ; TODO add download URI
+
+; +++++ Patches +++++
+
+projects[commerce_coupon][patch][] = "breaks_ctools-2296727-6.patch" ; TODO add path to patch
+

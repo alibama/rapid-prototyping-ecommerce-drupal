@@ -1,0 +1,228 @@
+; Packaging information for rapid_prototyping_lab_at_uva
+name = "Rapid Prototyping Lab at UVa"
+description = "a 3d prototyping e-commerce site"
+exclusive = "1"
+core = "7.x"
+; ----------
+; Dependencies
+; ----------
+; 3D
+dependencies[] = v3dm
+; @font-your-face
+dependencies[] = fontdeck
+dependencies[] = fontsquirrel
+dependencies[] = fontyourface
+dependencies[] = fontyourface_ui
+dependencies[] = google_fonts_api
+; Administration
+dependencies[] = admin_menu
+dependencies[] = module_filter
+; Chaos tool suite
+dependencies[] = bulk_export
+dependencies[] = ctools
+; Commerce
+dependencies[] = commerce
+dependencies[] = commerce_billy
+dependencies[] = commerce_billy_pdf
+dependencies[] = commerce_cart
+dependencies[] = commerce_checkout
+dependencies[] = commerce_customer
+dependencies[] = commerce_customer_ui
+dependencies[] = commerce_invoices
+dependencies[] = commerce_line_item
+dependencies[] = commerce_line_item_ui
+dependencies[] = commerce_order
+dependencies[] = commerce_order_ui
+dependencies[] = commerce_payment
+dependencies[] = commerce_payment_ui
+dependencies[] = commerce_price
+dependencies[] = commerce_product
+dependencies[] = commerce_product_pricing
+dependencies[] = commerce_product_pricing_ui
+dependencies[] = commerce_product_reference
+dependencies[] = commerce_product_ui
+dependencies[] = commerce_purchase_order
+dependencies[] = commerce_quikpay
+dependencies[] = commerce_quotes
+dependencies[] = commerce_tax
+dependencies[] = commerce_tax_ui
+dependencies[] = commerce_ui
+; Commerce (contrib)
+dependencies[] = commerce_addressbook
+dependencies[] = commerce_agree_terms
+dependencies[] = commerce_billy_mail
+dependencies[] = commerce_checkout_redirect
+dependencies[] = commerce_coupon
+dependencies[] = commerce_custom_product
+dependencies[] = commerce_custom_product_line_item
+dependencies[] = commerce_custom_product_pricing
+dependencies[] = commerce_custom_product_pricing_er
+dependencies[] = commerce_custom_product_pricing_er_ui
+dependencies[] = commerce_custom_product_pricing_ui
+dependencies[] = commerce_discount
+dependencies[] = commerce_extra_panes
+dependencies[] = commerce_extra_panes_termsofservice
+dependencies[] = commerce_pricing_attributes
+dependencies[] = dc_cart_ajax
+dependencies[] = uva_prototype_lab
+; Commerce Extra
+dependencies[] = commerce_extra
+dependencies[] = commerce_extra_login_page
+dependencies[] = commerce_extra_quantity
+; Commerce Product Enhancements
+dependencies[] = commerce_option
+dependencies[] = commerce_option_set_reference
+dependencies[] = commerce_product_attributes
+; Context
+dependencies[] = context
+dependencies[] = context_layouts
+dependencies[] = context_reaction_theme
+dependencies[] = context_ui
+; Core
+dependencies[] = block
+dependencies[] = color
+dependencies[] = comment
+dependencies[] = contact
+dependencies[] = contextual
+dependencies[] = dashboard
+dependencies[] = dblog
+dependencies[] = field
+dependencies[] = field_sql_storage
+dependencies[] = field_ui
+dependencies[] = file
+dependencies[] = filter
+dependencies[] = help
+dependencies[] = image
+dependencies[] = list
+dependencies[] = menu
+dependencies[] = node
+dependencies[] = number
+dependencies[] = options
+dependencies[] = overlay
+dependencies[] = path
+dependencies[] = php
+dependencies[] = rdf
+dependencies[] = search
+dependencies[] = shortcut
+dependencies[] = syslog
+dependencies[] = system
+dependencies[] = taxonomy
+dependencies[] = text
+dependencies[] = trigger
+dependencies[] = update
+dependencies[] = user
+; Course
+dependencies[] = course
+dependencies[] = course_certificate
+; Course objects
+dependencies[] = course_content
+dependencies[] = course_object_manual
+dependencies[] = course_quiz
+; Date/Time
+dependencies[] = date
+dependencies[] = date_api
+dependencies[] = date_popup
+dependencies[] = date_repeat
+dependencies[] = date_repeat_field
+dependencies[] = date_views
+; Development
+dependencies[] = profiler_builder
+dependencies[] = profiler_builder_extras
+; DrupalChat
+dependencies[] = drupalchat
+dependencies[] = drupalchat_nodejs
+dependencies[] = drupalchat_notifications
+; External authentication
+dependencies[] = pubcookie
+; Fields
+dependencies[] = addressfield
+dependencies[] = computed_field
+dependencies[] = conditional_fields
+dependencies[] = entityreference
+dependencies[] = filefield_sources
+dependencies[] = filefield_sources_plupload
+dependencies[] = inline_entity_form
+dependencies[] = mupload
+; Image
+dependencies[] = smartcrop
+; Mail
+dependencies[] = mailsystem
+dependencies[] = mimemail
+dependencies[] = smtp
+; Media
+dependencies[] = image_effects_text
+dependencies[] = image_effects_text_test
+dependencies[] = image_styles_admin
+dependencies[] = imagecache_actions
+dependencies[] = imagecache_autorotate
+dependencies[] = imagecache_canvasactions
+dependencies[] = imagecache_coloractions
+dependencies[] = imagecache_customactions
+dependencies[] = imagecache_testsuite
+dependencies[] = plupload
+; Nodejs
+dependencies[] = nodejs
+; Other
+dependencies[] = certificate
+dependencies[] = colorbox
+dependencies[] = entity
+dependencies[] = entity_token
+dependencies[] = formblock
+dependencies[] = imagefield_focus
+dependencies[] = libraries
+dependencies[] = logintoboggan
+dependencies[] = logintoboggan_rules
+dependencies[] = masquerade
+dependencies[] = nivo_slider
+dependencies[] = quiz_certificate
+dependencies[] = session_api
+dependencies[] = system_stream_wrapper
+dependencies[] = token
+; Panels
+dependencies[] = panels
+dependencies[] = panels_mini
+; Printer, email and PDF versions
+dependencies[] = print
+dependencies[] = print_pdf
+dependencies[] = print_pdf_dompdf
+dependencies[] = print_pdf_mpdf
+dependencies[] = print_pdf_tcpdf
+dependencies[] = print_ui
+; Quiz
+dependencies[] = quiz_page
+; Quiz Core
+dependencies[] = quiz
+dependencies[] = quiz_question
+; Quiz Question
+dependencies[] = long_answer
+dependencies[] = multichoice
+dependencies[] = quiz_ddlines
+dependencies[] = short_answer
+; Rules
+dependencies[] = inline_conditions
+dependencies[] = rules
+dependencies[] = rules_admin
+dependencies[] = rules_scheduler
+; Services
+dependencies[] = services
+; Take Control
+dependencies[] = take_control
+dependencies[] = take_control_fb
+dependencies[] = take_control_qp
+; UUID
+dependencies[] = uuid
+; User interface
+dependencies[] = ckeditor
+dependencies[] = elfinder
+dependencies[] = galleryformatter
+dependencies[] = jquery_update
+dependencies[] = lightbox2
+dependencies[] = sweaver
+; Views
+dependencies[] = views
+dependencies[] = views_bulk_operations
+dependencies[] = views_nivo_slider
+dependencies[] = views_ui
+; album photos
+dependencies[] = photos
+

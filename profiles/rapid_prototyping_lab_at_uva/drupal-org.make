@@ -4,7 +4,7 @@ api = "2"
 
 ; +++++ Modules +++++
 
-projects[v3dm][version] = "1.0"
+projects[v3dm][version] = "1.1"
 projects[v3dm][subdir] = "contrib"
 
 projects[fontyourface][version] = "2.8"
@@ -85,9 +85,6 @@ projects[date][subdir] = "contrib"
 projects[profiler_builder][version] = "1.x-dev"
 projects[profiler_builder][subdir] = "contrib"
 
-projects[drupalchat][version] = "1.4"
-projects[drupalchat][subdir] = "contrib"
-
 projects[pubcookie][version] = "2.2"
 projects[pubcookie][subdir] = "contrib"
 
@@ -139,7 +136,7 @@ projects[certificate][subdir] = "contrib"
 projects[colorbox][version] = "2.x-dev"
 projects[colorbox][subdir] = "contrib"
 
-projects[entity][version] = "1.5"
+projects[entity][version] = "1.6"
 projects[entity][subdir] = "contrib"
 
 projects[formblock][version] = "1.0-alpha1"
@@ -159,6 +156,9 @@ projects[masquerade][subdir] = "contrib"
 
 projects[nivo_slider][version] = "1.11"
 projects[nivo_slider][subdir] = "contrib"
+
+projects[pathauto][version] = "1.2"
+projects[pathauto][subdir] = "contrib"
 
 projects[session_api][version] = "1.x-dev"
 projects[session_api][subdir] = "contrib"
@@ -217,7 +217,7 @@ projects[lightbox2][subdir] = "contrib"
 projects[sweaver][version] = "1.x-dev"
 projects[sweaver][subdir] = "contrib"
 
-projects[views][version] = "3.8"
+projects[views][version] = "3.10"
 projects[views][subdir] = "contrib"
 
 projects[views_bulk_operations][version] = "3.2"
@@ -225,6 +225,9 @@ projects[views_bulk_operations][subdir] = "contrib"
 
 projects[views_nivo_slider][version] = "3.0-alpha1"
 projects[views_nivo_slider][subdir] = "contrib"
+
+projects[views_responsive_grid][version] = "1.x-dev"
+projects[views_responsive_grid][subdir] = "contrib"
 
 projects[photos][version] = "3.0-rc2"
 projects[photos][subdir] = "contrib"

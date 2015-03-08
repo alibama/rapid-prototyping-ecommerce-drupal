@@ -51,6 +51,13 @@ libraries[nivo-slider][destination] = "libraries"
 libraries[nivo-slider][download][type] = "get"
 libraries[nivo-slider][download][url] = "" ; TODO add download URI
 
+; jsc3d
+libraries[jsc3d][directory_name] = "jsc3d"
+libraries[jsc3d][type] = "library"
+libraries[jsc3d][destination] = "libraries"
+libraries[jsc3d][download][type] = "get"
+libraries[jsc3d][download][url] = "" ; TODO add download URI
+
 ; underscore
 libraries[underscore][directory_name] = "underscore"
 libraries[underscore][type] = "library"
@@ -78,6 +85,20 @@ libraries[tcpdf][type] = "library"
 libraries[tcpdf][destination] = "libraries"
 libraries[tcpdf][download][type] = "get"
 libraries[tcpdf][download][url] = "" ; TODO add download URI
+
+; thingiview.js
+libraries[thingiview.js][directory_name] = "thingiview.js"
+libraries[thingiview.js][type] = "library"
+libraries[thingiview.js][destination] = "libraries"
+libraries[thingiview.js][download][type] = "get"
+libraries[thingiview.js][download][url] = "" ; TODO add download URI
+
+; __MACOSX
+libraries[__MACOSX][directory_name] = "__MACOSX"
+libraries[__MACOSX][type] = "library"
+libraries[__MACOSX][destination] = "libraries"
+libraries[__MACOSX][download][type] = "get"
+libraries[__MACOSX][download][url] = "" ; TODO add download URI
 
 ; elfinder
 libraries[elfinder][directory_name] = "elfinder"

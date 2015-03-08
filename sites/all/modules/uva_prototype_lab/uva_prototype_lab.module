@@ -29,15 +29,15 @@ function uva_calculate_volume($line_item) {
     $line_item_wrapper->save();
   }
 }
-
+//changing the round settings here
 function get_stl_volume_size($filepath) {
   module_load_include('inc', 'uva_prototype_lab', 'includes/stlstats');
   $stats = new STLStats($filepath);
   $box = $stats->getBBox('cm');
   foreach ($box as $dim => $val) {
-    $box[$dim] = round($val, 2);
+    $box[$dim] = round($val, 1);
   }
-  return array(round($stats->getVolume(), 2), $box);
+  return array(round($stats->getVolume(), 1), $box);
 }
 
 function uva_prototype_lab_form_commerce_cart_add_to_cart_form_alter(&$form, &$form_state, $form_id) {

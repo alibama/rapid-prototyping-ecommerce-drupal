@@ -67,7 +67,9 @@ function v3dm_thingiviewjs_field_formatter_settings_form($field, $instance, $vie
     '#type' => 'radios',
     '#options' => $bool_options,
     '#title' => t('Show the 100x100px grid plane under the object'),
+    '#description' => t("NOTE: there's a bug upstream in ThingiView and this option doesn't work."),
     '#default_value' => $settings['showPlane'],
+    '#disabled' => TRUE,
   );
   $element['rotation'] = array(
     '#type' => 'radios',
@@ -75,6 +77,7 @@ function v3dm_thingiviewjs_field_formatter_settings_form($field, $instance, $vie
     '#title' => t('Automatically rotate the object around the z axis'),
     '#description' => t("NOTE: there's a bug upstream in ThingiView and this option doesn't work. See <a href='@url'>@url</a>", array('@url' => 'https://github.com/tbuser/thingiview.js/issues/12')),
     '#default_value' => $settings['rotation'],
+    '#disabled' => TRUE,
   );
   $element['cameraView'] = array(
     '#type' => 'radios',
@@ -137,7 +140,7 @@ function v3dm_thingiviewjs_field_formatter_view($entity_type, $entity, $field, $
   }
 
   foreach ($items as $delta => $item) {
-    $id = $field['field_name'] . '-' . $delta;
+    $id = drupal_html_id($field['field_name'] . '-' . $delta);
     $element[$delta] = array(
       '#type' => 'container',
       '#attributes' => array(
@@ -149,8 +152,7 @@ function v3dm_thingiviewjs_field_formatter_view($entity_type, $entity, $field, $
     $js['files'][$id] = file_create_url($item['uri']);
   }
 
-  drupal_add_js($path . '/Three.js');
-  drupal_add_js($path . '/plane.js');
+  drupal_add_js($path . '/three.min.js');
   drupal_add_js($path . '/thingiview.js');
   drupal_add_js(drupal_get_path('module', 'v3dm_thingiviewjs') . '/v3dm_thingiviewjs.js');
   drupal_add_js(array('v3dm_thingiviewjs' => $js), 'setting');

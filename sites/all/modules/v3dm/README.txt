@@ -2,11 +2,11 @@ Description
 ===========
 
 Viewer for 3D Models (v3dm) provides a field type to store 3D model files
-and two formatters to visualize them.
+and several formatters to visualize them.
 
 The field type doesn't do very much on its own. At present, it's just a
-container to upload 3D Models. In turn, v3dm provides two integration
-modules for Thingiview.js and JSC3D viewers.
+container to upload 3D Models. In turn, v3dm provides integration modules
+for Thingiview.js and JSC3D viewers.
 
 This project comes out of the need of a viewer for STL files
 (stereolithography format for 3D printers). While there were no specific
@@ -45,13 +45,20 @@ module, any valid place such as a profile or a site directory.
 v3dm_thingiviewjs
 -----------------
 
+Thingiview is originally created by Tony Buser (@tbuser). However the library
+is not updated since 2011 and several forks have been created. The one by
+Guillaume Seguin (@iXce) seems the better.
+
+v3dm_thingiviewjs module is based on @iXce's fork.
+
 Homepage: https://github.com/tbuser/thingiview.js
+@iXce fork: https://github.com/iXce/thingiview.js
 Expected libraries directory: thingiview.js
 
 Example instructions:
 
     cd sites/all/libraries
-    wget https://github.com/tbuser/thingiview.js/archive/master.zip
+    wget https://github.com/iXce/thingiview.js/archive/master.zip
     unzip master
     mv thingiview.js-master/ thingiview.js
     rm master.zip
@@ -59,7 +66,7 @@ Example instructions:
 It is *encouraged* to remove php/ subdir to avoid possible security holes, also
 examples can be remove to free some disk space.
 
-    rm -rf thingiview.js/{examples, php}
+    rm -rf thingiview.js/{examples,php}
 
 
 v3dm_jsc3d
@@ -71,9 +78,9 @@ Expected libraries directory: jsc3d
 Example instructions:
 
     cd sites/all/libraries
-    wget http://jsc3d.googlecode.com/files/jsc3d-full-0.9.8.zip
-    unzip jsc3d-full-0.9.8.zip -d jsc3d
-    rm jsc3d-full-0.9.8.zip
+    wget http://jsc3d.googlecode.com/files/jsc3d-full-1.6.5.zip
+    unzip jsc3d-full-1.6.5.zip -d jsc3d
+    rm jsc3d-full-1.6.5.zip
 
 This is a full package, you can safely remove demos, docs, etc.
 

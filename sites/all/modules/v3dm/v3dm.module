@@ -183,8 +183,18 @@ function v3dm_field_widget_form(&$form, &$form_state, $field, $instance, $langco
 /**
  * Implements hook_filefield_paths_field_type_info().
  *
- * Provides integration with filefield_paths.
+ * Provides integration with filefield_paths module.
  */
 function v3dm_filefield_paths_field_type_info() {
   return array('3dmodel');
 }
+
+/**
+ * Implements hook_storage_core_bridge_field_types().
+ *
+ * Provides integration with storage_api module.
+ */
+function v3dm_storage_core_bridge_field_types() {
+  return array('3dmodel');
+}
+

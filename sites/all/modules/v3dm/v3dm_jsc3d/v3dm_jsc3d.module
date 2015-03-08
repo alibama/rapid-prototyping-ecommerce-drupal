@@ -185,7 +185,7 @@ function v3dm_jsc3d_field_formatter_view($entity_type, $entity, $field, $instanc
   }
 
   foreach ($items as $delta => $item) {
-    $id = $field['field_name'] . '-' . $delta;
+    $id = drupal_html_id($field['field_name'] . '-' . $delta);
     $element[$delta] = array(
       '#theme' => 'jsc3d',
       '#attributes' => array(
